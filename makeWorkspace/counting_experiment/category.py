@@ -83,9 +83,11 @@ class Category:
         self.CONTROL = CONTROL
 
     def addTarget(self, vn, CR, correct=True):
+        # Unused
         self.additional_targets.append([vn, CR, correct])
 
     def addVar(self, vnam, n, xmin, xmax):
+        # Unused
         self.additional_vars[vnam] = [n, xmin, xmax]
 
     def fillExpectedHist(self, cr, expected_hist):
@@ -205,6 +207,7 @@ class Category:
         return self.channels
 
     def generate_systematic_templates(self, diag, npars):
+        # Unused
         if self.model_hist == 0:
             sys.exit(
                 "Error in generate_systematic_templates: cannot generate template variations before nominal model is created, first run Category.save_model() !!!! "
@@ -355,6 +358,7 @@ class Category:
         self._fout.WriteTObject(canvr)
 
     def save_model(self, diag):
+        # Unused
         # Need to make ratio
         self.model_hist = ROOT.TH1F(f"{self.cname}_combined_model", f"combined_model - {self.cname}", len(self._bins) - 1, array.array("d", self._bins))
         # fillModelHist(model_hist,channels)
@@ -373,6 +377,7 @@ class Category:
         self.histograms.append(histW)
 
     def save_all_models_internal(self, diag):
+        # Unused
         # First we make errors for the nominal model histogram
         error_hist_F = ROOT.TH1F(f"{self.cname}_combined_model_ERRORS", "combined_model - {self.cname}", len(self._bins) - 1, array.array("d", self._bins))
         histW = self.makeWeightHists()
@@ -450,6 +455,7 @@ class Category:
                 self.histograms.append(model_hist_vx_tg.Clone())
 
     def make_post_fit_plots(self):
+        # Unused
         c = ROOT.TCanvas(f"{self._target_datasetname}region_mc_fit_before_after")
         hist_original = ROOT.TH1F(f"{self.cname}_OriginalZvv", "", len(self._bins) - 1, array.array("d", self._bins))
         hist_post = ROOT.TH1F(f"{self.cname}_NewZvv", "", len(self._bins) - 1, array.array("d", self._bins))

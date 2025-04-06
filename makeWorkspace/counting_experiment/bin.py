@@ -135,6 +135,7 @@ class Bin:
         # self.wspace._import(cat,ROOT.RooFit.RecycleConflictNodes())
 
     def set_wspace(self, w):
+        # Only used once, in __init__
         self.wspace = w
         # self.wspace._import = getattr(self.wspace,"import") # workaround: import is a python keyword
         self.wspace._safe_import = SafeWorkspaceImporter(self.wspace)
@@ -230,6 +231,7 @@ class Bin:
         self.cr = control
 
     def ret_binid(self):
+        # Unused
         return self.binid
 
     # def ret_observed_dset(self):
@@ -251,6 +253,7 @@ class Bin:
         return self.wspace_out.function(self.mu.GetName()).getVal()
 
     def ret_expected_err(self):
+        # Unused
         return self.wspace_out.function(self.mu.GetName()).getError()
 
     def ret_model_err(self):

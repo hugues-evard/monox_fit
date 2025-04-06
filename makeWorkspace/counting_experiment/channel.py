@@ -26,6 +26,7 @@ class Channel:
         return self.crname
 
     def add_systematic_shape(self, sys, file):
+        # Unused
         sys.exit("Nothing Will Happen with add_systematic, use add_nuisance")
         sfup = f"{self.scalefactors.GetName()}_{sys}_Up"
         sfdn = f"{self.scalefactors.GetName()}_{sys}_Down"
@@ -41,6 +42,7 @@ class Channel:
         self.systematics[sys] = [file.Get(sfup), file.Get(sfdn)]
 
     def add_systematic_yield(self, syst, kappa):
+        # Unused
         sys.exit("Nothing Will Happen with add_systematic, use add_nuisance")
         sfup = f"{self.scalefactors.GetName()}_{syst}_Up"
         sfdn = f"{self.scalefactors.GetName()}_{syst}_Down"
@@ -177,6 +179,7 @@ class Channel:
         self.nuisances.append(name)
 
     def set_wspace(self, w):
+        # Only used once, in __init__
         self.wspace = w
         self.wspace._safe_import = SafeWorkspaceImporter(self.wspace)
         # self.wspace._import = getattr(self.wspace,"import") # workaround: import is a python keyword
@@ -191,6 +194,7 @@ class Channel:
         return self.chname
 
     def ret_chid(self):
+        # Unused
         return self.chid
 
     def ret_sfactor(self, i, syst="", direction=1):
