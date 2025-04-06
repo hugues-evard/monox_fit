@@ -171,7 +171,7 @@ class Category:
 
                 # model_mu added to ws somewhere setup_expect_var (in else block)
                 if self.isSecondDependant:
-                    ch.setup_expect_var("cat_%s_%s_ch_%s" % (self.category, self.BASE, self.CONTROL))
+                    ch.setup_expect_var(f"cat_{self.category}_{self.BASE}_ch_{self.CONTROL}")
                 else:
                     ch.setup_expect_var()
 
@@ -184,7 +184,7 @@ class Category:
         for j, cr in enumerate(self._control_regions):
             # save the prefit histos
             cr_pre_hist = ROOT.TH1F(
-                "control_region_%s" % cr.ret_name(), "Expected %s control region" % cr.ret_name(), len(self._bins) - 1, array.array("d", self._bins)
+                f"control_region_{cr.ret_name()}", f"Expected {cr.ret_name()} control region", len(self._bins) - 1, array.array("d", self._bins)
             )
             self.fillExpectedHist(cr, cr_pre_hist)
             cr_pre_hist.SetLineWidth(2)
@@ -240,14 +240,12 @@ class Category:
 
         for par in range(npars):
             hist_up = ROOT.TH1F(
-                "%s_combined_model_par_%d_Up" % (self.GNAME, par),
-                "combined_model par %d Up 1 sigma - %s " % (par, self.cname),
+                f"{self.GNAME}_combined_model_par_{par}_Up" f"combined_model par {par} Up 1 sigma - {self.cname} ",
                 len(self._bins) - 1,
                 array.array("d", self._bins),
             )
             hist_dn = ROOT.TH1F(
-                "%s_combined_model_par_%d_Down" % (self.GNAME, par),
-                "combined_model par %d Down 1 sigma - %s" % (par, self.cname),
+                f"{self.GNAME}_combined_model_par_{par}_Down" f"combined_model par {par} Down 1 sigma - {self.cname} ",
                 len(self._bins) - 1,
                 array.array("d", self._bins),
             )
@@ -328,7 +326,7 @@ class Category:
             systrats.append(hist_dn_cl.Clone())
             # hist_up_cl.Draw('histsame')
             # hist_dn_cl.Draw('histsame')
-            leg_var.AddEntry(hist_up_cl, "Parameter %d" % par, "L")
+            leg_var.AddEntry(hist_up_cl, f"Parameter {par}", "L")
             sys_c += 1
 
         # find maximum
@@ -358,7 +356,7 @@ class Category:
 
     def save_model(self, diag):
         # Need to make ratio
-        self.model_hist = ROOT.TH1F("%s_combined_model" % (self.cname), "combined_model - %s" % (self.cname), len(self._bins) - 1, array.array("d", self._bins))
+        self.model_hist = ROOT.TH1F(f"{self.cname}_combined_model", f"combined_model - {self.cname}", len(self._bins) - 1, array.array("d", self._bins))
         # fillModelHist(model_hist,channels)
 
         histW = self.makeWeightHists()
@@ -368,17 +366,15 @@ class Category:
 
         # _fout = ROOT.TFile("combined_model.root","RECREATE")
         # _fout.WriteTObject(self.model_hist)
-        self.model_hist.SetName("%s_combined_model" % self.GNAME)
-        histW.SetName("%s_correction_weights_%s" % (self.GNAME, self.cname))
+        self.model_hist.SetName(f"{self.GNAME}_combined_model")
+        histW.SetName(f"{self.GNAME}_correction_weights_{self.cname}")
         histW.SetLineWidth(2)
         histW.SetLineColor(4)
         self.histograms.append(histW)
 
     def save_all_models_internal(self, diag):
         # First we make errors for the nominal model histogram
-        error_hist_F = ROOT.TH1F(
-            "%s_combined_model_ERRORS" % (self.cname), "combined_model - %s" % (self.cname), len(self._bins) - 1, array.array("d", self._bins)
-        )
+        error_hist_F = ROOT.TH1F(f"{self.cname}_combined_model_ERRORS", "combined_model - {self.cname}", len(self._bins) - 1, array.array("d", self._bins))
         histW = self.makeWeightHists()
         histW_U = self.makeWeightHists()
         for b in range(histW_U.GetNbinsX()):
@@ -397,17 +393,15 @@ class Category:
             cr_i = tg_v[1]
             histW = self.makeWeightHists(cr_i, True)
             histW_U = self.makeWeightHists(cr_i, True)
-            histW.SetName("%s_%s_combined_model_WEIGHTS_CR_FORTARGET" % (self.GNAME, tg))
+            histW.SetName(f"{self.GNAME}_{tg}_combined_model_WEIGHTS_CR_FORTARGET")
             self.histograms.append(histW.Clone())
             for b in range(histW_U.GetNbinsX()):
                 # now its ~the default correction +1 sigma
                 histW_U.SetBinContent(b + 1, histW_U.GetBinContent(b + 1) + histW_U.GetBinError(b + 1))
-            model_tg = ROOT.TH1F(
-                "%s_%s_combined_model" % (self.GNAME, tg), "combined_model - %s" % (self.cname), len(self._bins) - 1, array.array("d", self._bins)
-            )
+            model_tg = ROOT.TH1F(f"{self.GNAME}_{tg}_combined_model", f"combined_model - {self.cname}", len(self._bins) - 1, array.array("d", self._bins))
             diag.generateWeightedTemplate(model_tg, histW, self._varname, self._varname, self._wspace.data(tg))
             model_tg_errs = ROOT.TH1F(
-                "%s_%s_combined_model_ERRORS" % (self.GNAME, tg), "combined_model - %s" % (self.cname), len(self._bins) - 1, array.array("d", self._bins)
+                f"{self.GNAME}_{tg}_combined_model_ERRORS", "combined_model - {self.cname}", len(self._bins) - 1, array.array("d", self._bins)
             )
             diag.generateWeightedTemplate(model_tg_errs, histW_U, self._varname, self._varname, self._wspace.data(tg))
             # Errors are set as
@@ -427,8 +421,8 @@ class Category:
             nb = self.additional_vars[varx][0]
             min = self.additional_vars[varx][1]
             max = self.additional_vars[varx][2]
-            model_hist_vx = ROOT.TH1F("%s_combined_model%s" % (self.GNAME, varx), "combined_model - %s" % (self.cname), nb, min, max)
-            model_hist_vx_errs = ROOT.TH1F("%s_combined_model%s_ERRORS" % (self.GNAME, varx), "combined_model - %s" % (self.cname), nb, min, max)
+            model_hist_vx = ROOT.TH1F(f"{self.GNAME}_combined_model{varx}", f"combined_model - {self.cname}", nb, min, max)
+            model_hist_vx_errs = ROOT.TH1F(f"{self.GNAME}_combined_model{varx}_ERRORS", f"combined_model - {self.cname}", nb, min, max)
             diag.generateWeightedTemplate(model_hist_vx, histW, self._varname, varx, self._wspace.data(self._target_datasetname))
             diag.generateWeightedTemplate(model_hist_vx_errs, histW_U, self._varname, varx, self._wspace.data(self._target_datasetname))
             for b in range(model_hist_vx_errs.GetNbinsX()):
@@ -444,8 +438,8 @@ class Category:
                 for b in range(histW_U.GetNbinsX()):
                     # now its ~the default correction +1 sigma
                     histW_U.SetBinContent(b + 1, histW_U.GetBinContent(b + 1) + histW_U.GetBinError(b + 1))
-                model_hist_vx_tg = ROOT.TH1F("%s_%s_combined_model%s" % (self.GNAME, tg, varx), "combined_model - %s" % (self.cname), nb, min, max)
-                model_hist_vx_tg_errs = ROOT.TH1F("%s_%s_combined_model_ERRORS%s" % (self.GNAME, tg, varx), "combined_model - %s" % (self.cname), nb, min, max)
+                model_hist_vx_tg = ROOT.TH1F(f"{self.GNAME}_{tg}_combined_model{varx}", "combined_model - {self.cname}", nb, min, max)
+                model_hist_vx_tg_errs = ROOT.TH1F(f"{self.GNAME}_{tg}_combined_model_ERRORS{varx}", f"combined_model - {self.cname}", nb, min, max)
                 diag.generateWeightedTemplate(model_hist_vx_tg, histW, self._varname, varx, self._wspace.data(tg))
                 diag.generateWeightedTemplate(model_hist_vx_tg_errs, histW_U, self._varname, varx, self._wspace.data(tg))
                 for b in range(model_hist_vx_tg_errs.GetNbinsX()):
@@ -456,9 +450,9 @@ class Category:
                 self.histograms.append(model_hist_vx_tg.Clone())
 
     def make_post_fit_plots(self):
-        c = ROOT.TCanvas("%sregion_mc_fit_before_after" % self._target_datasetname)
-        hist_original = ROOT.TH1F("%s_OriginalZvv" % (self.cname), "", len(self._bins) - 1, array.array("d", self._bins))
-        hist_post = ROOT.TH1F("%s_NewZvv" % (self.cname), "", len(self._bins) - 1, array.array("d", self._bins))
+        c = ROOT.TCanvas(f"{self._target_datasetname}region_mc_fit_before_after")
+        hist_original = ROOT.TH1F(f"{self.cname}_OriginalZvv", "", len(self._bins) - 1, array.array("d", self._bins))
+        hist_post = ROOT.TH1F(f"{self.cname}_NewZvv", "", len(self._bins) - 1, array.array("d", self._bins))
         for i, ch in enumerate(self.channels):
             if i >= len(self._bins) - 1:
                 break
@@ -483,22 +477,22 @@ class Category:
 
         # now build post fit plots in each control region with some indication of systematic variations from fit?
         for j, cr in enumerate(self._control_regions):
-            c = ROOT.TCanvas("c_%s" % cr.ret_name(), "", 800, 800)
+            c = ROOT.TCanvas(f"c_{cr.ret_name()}", "", 800, 800)
             cr_hist = ROOT.TH1F(
-                "%s_control_region_%s" % (self.cname, cr.ret_name()),
-                "Expected %s control region" % cr.ret_name(),
+                f"{self.cname}_control_region_{cr.ret_name()}",
+                f"Expected {cr.ret_name()} control region",
                 len(self._bins) - 1,
                 array.array("d", self._bins),
             )
             da_hist = ROOT.TH1F(
-                "%s_data_control_region_%s" % (self.cname, cr.ret_name()),
-                "data %s control region" % cr.ret_name(),
+                f"{self.cname}_data_control_region_{cr.ret_name()}",
+                f"data {cr.ret_name()} control region",
                 len(self._bins) - 1,
                 array.array("d", self._bins),
             )
             mc_hist = ROOT.TH1F(
-                "%s_mc_control_region_%s" % (self.cname, cr.ret_name()),
-                "Background %s control region" % cr.ret_name(),
+                f"{self.cname}_mc_control_region_{cr.ret_name()}",
+                f"Background {cr.ret_name()} control region",
                 len(self._bins) - 1,
                 array.array("d", self._bins),
             )
@@ -536,7 +530,7 @@ class Category:
             tlg = ROOT.TLegend(0.54, 0.53, 0.89, 0.89)
             tlg.SetFillColor(0)
             tlg.SetTextFont(42)
-            tlg.AddEntry(da_hist, "Data - %s" % cr.ret_title(), "PEL")
+            tlg.AddEntry(da_hist, f"Data - {cr.ret_title()}", "PEL")
             tlg.AddEntry(cr_hist, "Expected (post-fit)", "FL")
             tlg.AddEntry(mc_hist, "Backgrounds Component", "F")
             tlg.AddEntry(pre_hist, "Expected (pre-fit)", "L")
@@ -594,7 +588,7 @@ class Category:
             ratio_pre.SetMarkerColor(pre_hist.GetLineColor())
             ratio_pre.SetLineWidth(2)
             eline = ratio.Clone()
-            eline.SetName("OneWithError_%s" % ratio.GetName())
+            eline.SetName(f"OneWithError_{ratio.GetName()}")
             self.all_hists.append(eline)
             for b in range(ratio.GetNbinsX()):
                 eline.SetBinContent(b + 1, 1)
