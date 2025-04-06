@@ -1,11 +1,8 @@
-import ROOT as r
-import sys
-import array
-import re
-from HiggsAnalysis.CombinedLimit.ModelTools import *
+import ROOT  # type: ignore
+from HiggsAnalysis.CombinedLimit.ModelTools import SafeWorkspaceImporter  # type: ignore
 from .utils import *
 
-MAXBINS = 100
+# MAXBINS = 100
 
 
 class Bin:
@@ -46,19 +43,19 @@ class Bin:
 
         # self.dataset.sumEntries("%s>=%g && %s<%g "%(var.GetName(),xmin,var.GetName(),xmax))
         self.o = 1
-        # r.RooRealVar("observed","Observed Events bin",1)
+        # ROOT.RooRealVar("observed","Observed Events bin",1)
         self.obs = self.wspace_out.var("observed")
 
         # <-------------------------- Check this is cool
-        self.argset = r.RooArgSet(wspace.var(self.var.GetName()))
-        self.obsargset = r.RooArgSet(self.wspace_out.var("observed"), self.wspace_out.cat("bin_number"))
+        self.argset = ROOT.RooArgSet(wspace.var(self.var.GetName()))
+        self.obsargset = ROOT.RooArgSet(self.wspace_out.var("observed"), self.wspace_out.cat("bin_number"))
 
         self.b = 0
         # self.constBkg = True
 
     def add_background(self, bkg):
         if "Purity" in bkg:
-            tmp_pfunc = r.TF1("tmp_bkg_%s" % self.id, bkg.split(":")[-1])  # ?
+            tmp_pfunc = ROOT.TF1("tmp_bkg_%s" % self.id, bkg.split(":")[-1])  # ?
             b = self.o * (1 - tmp_pfunc.Eval(self.cen))
             # self.constBkg = False
         else:
@@ -73,36 +70,38 @@ class Bin:
             print("Is this really true? How many nuisance:", len(nuisances))
 
             if len(nuisances) > 1:
-                nuis_args = r.RooArgList()
+                nuis_args = ROOT.RooArgList()
                 for nuis in nuisances:
                     print("Adding Background Nuisance ", nuis)
                     # Nuisance*Scale is the model
-                    # form_args = r.RooArgList(self.wspace_out.var("nuis_%s"%nuis),self.wspace_out.function("sys_function_%s_%s"%(nuis,self.binid)))
+                    # form_args = ROOT.RooArgList(self.wspace_out.var("nuis_%s"%nuis),self.wspace_out.function("sys_function_%s_%s"%(nuis,self.binid)))
                     print("Trying to continue", self.wspace_out.function("sys_function_%s_%s" % (nuis, self.binid)).GetName())
                     print("Does it have an attribute:", self.wspace_out.function("sys_function_%s_%s" % (nuis, self.binid)).getAttribute("temp"))
                     if self.wspace_out.function("sys_function_%s_%s" % (nuis, self.binid)).getAttribute("temp"):
                         continue
-                    form_args = r.RooArgList(self.wspace_out.function("sys_function_%s_%s" % (nuis, self.binid)))
-                    delta_nuis = r.RooFormulaVar("delta_bkg_%s_%s" % (self.binid, nuis), "Delta Change from %s" % nuis, "1+@0", form_args)
-                    self.wspace_out._import(delta_nuis, r.RooFit.RecycleConflictNodes())
+                    form_args = ROOT.RooArgList(self.wspace_out.function("sys_function_%s_%s" % (nuis, self.binid)))
+                    delta_nuis = ROOT.RooFormulaVar("delta_bkg_%s_%s" % (self.binid, nuis), "Delta Change from %s" % nuis, "1+@0", form_args)
+                    self.wspace_out._import(delta_nuis, ROOT.RooFit.RecycleConflictNodes())
                     nuis_args.add(self.wspace_out.function(delta_nuis.GetName()))
-                prod = r.RooProduct("prod_background_%s" % self.binid, "Nuisance Modifier", nuis_args)
+                prod = ROOT.RooProduct("prod_background_%s" % self.binid, "Nuisance Modifier", nuis_args)
             else:
                 print("Adding Background Nuisance ", nuisances[0])
                 # if (self.wspace_out.function.getAttribute("temp")):
-                ##  prod = r.RooFormulaVar("prod_background_%s"%self.binid,"Delta Change in Background from %s"%nuisances[0],"1",r.RooArgList())
+                ##  prod = ROOT.RooFormulaVar("prod_background_%s"%self.binid,"Delta Change in Background from %s"%nuisances[0],"1",ROOT.RooArgList())
                 # else:
-                prod = r.RooFormulaVar(
+                prod = ROOT.RooFormulaVar(
                     "prod_background_%s" % self.binid,
                     "Delta Change in Background from %s" % nuisances[0],
                     "1+@0",
-                    r.RooArgList(self.wspace_out.function("sys_function_%s_%s" % (nuisances[0], self.binid))),
+                    ROOT.RooArgList(self.wspace_out.function("sys_function_%s_%s" % (nuisances[0], self.binid))),
                 )
 
-            self.b = r.RooFormulaVar("background_%s" % self.binid, "Number of expected background events in %s" % self.binid, "@0*%f" % b, r.RooArgList(prod))
+            self.b = ROOT.RooFormulaVar(
+                "background_%s" % self.binid, "Number of expected background events in %s" % self.binid, "@0*%f" % b, ROOT.RooArgList(prod)
+            )
         else:
-            self.b = r.RooFormulaVar(
-                "background_%s" % self.binid, "Number of expected background events in %s" % self.binid, "@0", r.RooArgList(r.RooFit.RooConst(b))
+            self.b = ROOT.RooFormulaVar(
+                "background_%s" % self.binid, "Number of expected background events in %s" % self.binid, "@0", ROOT.RooArgList(ROOT.RooFit.RooConst(b))
             )
         self.wspace_out._import(self.b)
         self.b = self.wspace_out.function(self.b.GetName())
@@ -135,7 +134,7 @@ class Bin:
 
     def set_label(self, cat):
         self.categoryname = cat.GetName()
-        # self.wspace._import(cat,r.RooFit.RecycleConflictNodes())
+        # self.wspace._import(cat,ROOT.RooFit.RecycleConflictNodes())
 
     def set_wspace(self, w):
         self.wspace = w
@@ -148,16 +147,16 @@ class Bin:
             self.sfactor.setVal(val)
             self.wspace_out.var(self.sfactor.GetName()).setVal(val)
         else:
-            self.sfactor = r.RooRealVar("sfactor_%s" % self.binid, "Scale factor for bin %s" % self.binid, val, 0.00001, 10000)
+            self.sfactor = ROOT.RooRealVar("sfactor_%s" % self.binid, "Scale factor for bin %s" % self.binid, val, 0.00001, 10000)
             self.sfactor.removeRange()
             self.sfactor.setConstant()
-            self.wspace_out._import(self.sfactor, r.RooFit.RecycleConflictNodes())
+            self.wspace_out._import(self.sfactor, ROOT.RooFit.RecycleConflictNodes())
 
     def setup_expect_var(self, functionalForm=""):
         print(functionalForm)
         if not len(functionalForm):
             if not self.wspace_out.var(naming_convention(self.id, self.catid, self.convention)):
-                self.model_mu = r.RooRealVar(
+                self.model_mu = ROOT.RooRealVar(
                     naming_convention(self.id, self.catid, self.convention), "Model of N expected events in %d" % self.id, self.initY, 0, 3 * self.initY
                 )
                 # self.model_mu.removeMax() TODO
@@ -172,48 +171,48 @@ class Bin:
 
             self.model_mu = self.wspace_out.function("pmu_%s" % (DEPENDANT))
 
-        arglist = r.RooArgList((self.model_mu), self.wspace_out.var(self.sfactor.GetName()))
+        arglist = ROOT.RooArgList((self.model_mu), self.wspace_out.var(self.sfactor.GetName()))
 
         # Multiply by each of the uncertainties in the control region, dont alter the Poisson pdf, we will add the constraint at the end. Actually we won't use this right now.
         nuisances = self.cr.ret_nuisances()
         if len(nuisances) > 0:
             prod = 0
             if len(nuisances) > 1:
-                nuis_args = r.RooArgList()
+                nuis_args = ROOT.RooArgList()
                 for nuis in nuisances:
                     if self.wspace_out.function("sys_function_%s_%s" % (nuis, self.binid)).getAttribute("temp"):
                         continue
 
                     print("Adding Nuisance ", nuis)
                     # Nuisance*Scale is the model
-                    # form_args = r.RooArgList(self.wspace_out.var("nuis_%s"%nuis),self.wspace_out.function("sys_function_%s_%s"%(nuis,self.binid)))
-                    form_args = r.RooArgList(self.wspace_out.function("sys_function_%s_%s" % (nuis, self.binid)))
-                    delta_nuis = r.RooFormulaVar("delta_%s_%s" % (self.binid, nuis), "Delta Change from %s" % nuis, "1+@0", form_args)
-                    self.wspace_out._import(delta_nuis, r.RooFit.RecycleConflictNodes())
+                    # form_args = ROOT.RooArgList(self.wspace_out.var("nuis_%s"%nuis),self.wspace_out.function("sys_function_%s_%s"%(nuis,self.binid)))
+                    form_args = ROOT.RooArgList(self.wspace_out.function("sys_function_%s_%s" % (nuis, self.binid)))
+                    delta_nuis = ROOT.RooFormulaVar("delta_%s_%s" % (self.binid, nuis), "Delta Change from %s" % nuis, "1+@0", form_args)
+                    self.wspace_out._import(delta_nuis, ROOT.RooFit.RecycleConflictNodes())
                     nuis_args.add(self.wspace_out.function(delta_nuis.GetName()))
 
-                prod = r.RooProduct("prod_%s" % self.binid, "Nuisance Modifier", nuis_args)
+                prod = ROOT.RooProduct("prod_%s" % self.binid, "Nuisance Modifier", nuis_args)
             else:
                 print("Adding Nuisance ", nuisances[0])
-                prod = r.RooFormulaVar(
+                prod = ROOT.RooFormulaVar(
                     "prod_%s" % self.binid,
                     "Delta Change from %s" % nuisances[0],
                     "1+@0",
-                    r.RooArgList(self.wspace_out.function("sys_function_%s_%s" % (nuisances[0], self.binid))),
+                    ROOT.RooArgList(self.wspace_out.function("sys_function_%s_%s" % (nuisances[0], self.binid))),
                 )
             arglist.add(prod)
-            self.pure_mu = r.RooFormulaVar("pmu_%s" % self.binid, "Number of expected (signal) events in %s" % self.binid, "(@0*@1)*@2", arglist)
+            self.pure_mu = ROOT.RooFormulaVar("pmu_%s" % self.binid, "Number of expected (signal) events in %s" % self.binid, "(@0*@1)*@2", arglist)
         else:
-            self.pure_mu = r.RooFormulaVar("pmu_%s" % self.binid, "Number of expected (signal) events in %s" % self.binid, "(@0*@1)", arglist)
+            self.pure_mu = ROOT.RooFormulaVar("pmu_%s" % self.binid, "Number of expected (signal) events in %s" % self.binid, "(@0*@1)", arglist)
         # Finally we add in the background
-        bkgArgList = r.RooArgList(self.pure_mu)
-        # if self.constBkg: self.mu = r.RooFormulaVar("mu_%s"%self.binid,"Number of expected events in %s"%self.binid,"%f+@0"%self.b,bkgArgList)
-        # else : self.mu = r.RooFormulaVar("mu_%s"%self.binid,"Number of expected events in %s"%self.binid,"@0/%f"%self.b,bkgArgList)
-        self.mu = r.RooFormulaVar("mu_%s" % self.binid, "Number of expected events in %s" % self.binid, "@0", bkgArgList)
+        bkgArgList = ROOT.RooArgList(self.pure_mu)
+        # if self.constBkg: self.mu = ROOT.RooFormulaVar("mu_%s"%self.binid,"Number of expected events in %s"%self.binid,"%f+@0"%self.b,bkgArgList)
+        # else : self.mu = ROOT.RooFormulaVar("mu_%s"%self.binid,"Number of expected events in %s"%self.binid,"@0/%f"%self.b,bkgArgList)
+        self.mu = ROOT.RooFormulaVar("mu_%s" % self.binid, "Number of expected events in %s" % self.binid, "@0", bkgArgList)
 
-        # self.mu = r.RooFormulaVar("mu_%s"%self.binid,"Number of expected events in %s"%self.binid,"@0/(@1*@2)",r.RooArgList(self.integral,self.sfactor,self.pdfFullInt))
-        self.wspace_out._import(self.mu, r.RooFit.RecycleConflictNodes())
-        self.wspace_out._import(self.obs, r.RooFit.RecycleConflictNodes())
+        # self.mu = ROOT.RooFormulaVar("mu_%s"%self.binid,"Number of expected events in %s"%self.binid,"@0/(@1*@2)",ROOT.RooArgList(self.integral,self.sfactor,self.pdfFullInt))
+        self.wspace_out._import(self.mu, ROOT.RooFit.RecycleConflictNodes())
+        self.wspace_out._import(self.obs, ROOT.RooFit.RecycleConflictNodes())
         self.wspace_out.factory("Poisson::pdf_%s(observed,mu_%s)" % (self.binid, self.binid))
 
     def add_to_dataset(self):
@@ -223,9 +222,9 @@ class Bin:
         # self.wspace_out.cat(self.categoryname).setIndex(self.type_id)
         lv = self.wspace_out.var("observed")
         lc = self.wspace_out.cat("bin_number")
-        local_obsargset = r.RooArgSet(lv, lc)
+        local_obsargset = ROOT.RooArgSet(lv, lc)
         if not self.wspace_out.data("combinedData"):
-            obsdata = r.RooDataSet("combinedData", "Data in all Bins", local_obsargset)
+            obsdata = ROOT.RooDataSet("combinedData", "Data in all Bins", local_obsargset)
             self.wspace_out._import(obsdata)
         obsdata = self.wspace_out.data("combinedData")
         obsdata.addFast(local_obsargset)
@@ -236,8 +235,8 @@ class Bin:
     def ret_binid(self):
         return self.binid
 
-    def ret_observed_dset(self):
-        return self.wspace_out.data(dsname)
+    # def ret_observed_dset(self):
+    # return self.wspace_out.data(dsname)
 
     def ret_observed(self):
         return self.o

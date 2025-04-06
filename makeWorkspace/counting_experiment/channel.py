@@ -1,10 +1,6 @@
-import ROOT as r
+import ROOT  # type: ignore
 import sys
-import array
-import re
-from HiggsAnalysis.CombinedLimit.ModelTools import *
-
-MAXBINS = 100
+from HiggsAnalysis.CombinedLimit.ModelTools import SafeWorkspaceImporter  # type: ignore
 
 
 class Channel:
@@ -60,13 +56,15 @@ class Channel:
     def add_nuisance(self, name, size, bkg=False):
         # print "Error, Nuisance parameter model not supported fully for shape variations, dont use it!"
         if not (self.wspace_out.var("%s" % name)):
-            # nuis = r.RooRealVar("nuis_%s"%name,"Nuisance - %s"%name,0,-3,3);
-            nuis = r.RooRealVar("%s" % name, "Nuisance - %s" % name, 0, -3, 3)
+            # nuis = ROOT.RooRealVar("nuis_%s"%name,"Nuisance - %s"%name,0,-3,3);
+            nuis = ROOT.RooRealVar("%s" % name, "Nuisance - %s" % name, 0, -3, 3)
             nuis.setAttribute("NuisanceParameter_EXTERNAL", True)
             if bkg:
                 nuis.setAttribute("BACKGROUND_NUISANCE", True)
             self.wspace_out._import(nuis)
-            cont = r.RooGaussian("const_%s" % name, "Constraint - %s" % name, self.wspace_out.var(nuis.GetName()), r.RooFit.RooConst(0), r.RooFit.RooConst(1))
+            cont = ROOT.RooGaussian(
+                "const_%s" % name, "Constraint - %s" % name, self.wspace_out.var(nuis.GetName()), ROOT.RooFit.RooConst(0), ROOT.RooFit.RooConst(1)
+            )
             self.wspace_out._import(cont)
 
         # run through all of the bins in the control regions and create a function to interpolate
@@ -75,7 +73,7 @@ class Channel:
                 fname = "sys_function_%s_cat_%s_ch_%s_bin_%d" % (name, self.catid, self.chid, b)
             else:
                 fname = "sys_function_%s_cat_%s_ch_%s_bin%d" % (name, self.catid, self.chid, b + 1)
-            func = r.RooFormulaVar(fname, "Systematic Varation", "@0*%f" % size, r.RooArgList(self.wspace_out.var("%s" % name)))
+            func = ROOT.RooFormulaVar(fname, "Systematic Varation", "@0*%f" % size, ROOT.RooArgList(self.wspace_out.var("%s" % name)))
             if not self.wspace_out.function(func.GetName()):
                 self.wspace_out._import(func)
         # else
@@ -87,15 +85,19 @@ class Channel:
 
     def add_nuisance_shape(self, name, file, setv="", functype="quadratic"):
         if not (self.wspace_out.var("%s" % name)):
-            nuis = r.RooRealVar("%s" % name, "Nuisance - %s" % name, 0, -3, 3)
+            nuis = ROOT.RooRealVar("%s" % name, "Nuisance - %s" % name, 0, -3, 3)
             nuis.setAttribute("NuisanceParameter_EXTERNAL", True)
             self.wspace_out._import(nuis)
-            nuis_IN = r.RooRealVar("nuis_IN_%s" % name, "Constraint Mean - %s" % name, 0, -10, 10)
+            nuis_IN = ROOT.RooRealVar("nuis_IN_%s" % name, "Constraint Mean - %s" % name, 0, -10, 10)
             nuis_IN.setConstant()
             self.wspace_out._import(nuis_IN)
 
-            cont = r.RooGaussian(
-                "const_%s" % name, "Constraint - %s" % name, self.wspace_out.var(nuis.GetName()), self.wspace_out.var(nuis_IN.GetName()), r.RooFit.RooConst(1)
+            cont = ROOT.RooGaussian(
+                "const_%s" % name,
+                "Constraint - %s" % name,
+                self.wspace_out.var(nuis.GetName()),
+                self.wspace_out.var(nuis_IN.GetName()),
+                ROOT.RooFit.RooConst(1),
             )
             self.wspace_out._import(cont)
 
@@ -136,8 +138,8 @@ class Channel:
                 coeff_b = 0.5 * (vu - vd)
 
                 # this is now relative deviation, SF-SF_0 = func => SF = SF_0*(1+func/SF_0)
-                func = r.RooFormulaVar(
-                    fname, "Systematic Varation", "(%f*@0*@0+%f*@0)/%f" % (coeff_a, coeff_b, nsf), r.RooArgList(self.wspace_out.var("%s" % name))
+                func = ROOT.RooFormulaVar(
+                    fname, "Systematic Varation", "(%f*@0*@0+%f*@0)/%f" % (coeff_a, coeff_b, nsf), ROOT.RooArgList(self.wspace_out.var("%s" % name))
                 )
 
                 if coeff_a == 0 and coeff_b == 0:
@@ -154,11 +156,11 @@ class Channel:
 
                     direction = 1 if sfmax > sfmin else -1
 
-                func = r.RooFormulaVar(
+                func = ROOT.RooFormulaVar(
                     fname,
                     "Systematic Variation",
                     "({N} * (1+{SIGMA}/{N})**({DIRECTION}*@0) - {N}) / {N}".format(N=n0, SIGMA=sigma, DIRECTION=direction),
-                    r.RooArgList(self.wspace_out.var("%s" % name)),
+                    ROOT.RooArgList(self.wspace_out.var("%s" % name)),
                 )
                 if sigma == 0:
                     func.setAttribute("temp", True)

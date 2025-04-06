@@ -1,10 +1,5 @@
-import ROOT as r
-import sys
-import array
 import re
-from HiggsAnalysis.CombinedLimit.ModelTools import *
-
-MAXBINS = 100
+from HiggsAnalysis.CombinedLimit.ModelTools import *  # type: ignore
 
 
 def naming_convention(id, catid, convention="BU"):
