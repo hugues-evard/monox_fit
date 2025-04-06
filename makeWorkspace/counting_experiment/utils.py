@@ -4,13 +4,13 @@ from HiggsAnalysis.CombinedLimit.ModelTools import *  # type: ignore
 
 def naming_convention(id, catid, convention="BU"):
     if convention == "BU":
-        return "model_mu_cat_%s_bin_%d" % (catid, id)
+        return f"model_mu_cat_{catid}_bin_{id}"
     elif convention == "IC":
         m = re.match(".*(201\d).*", catid)
         if not m or len(m.groups()) > 1:
             raise RuntimeError("Cannot derive year from category ID: " + catid)
         year = m.groups()[0]
-        return "MTR_%s_QCDZ_SR_bin%d" % (year, id + 1)
+        return f"MTR_{year}_QCDZ_SR_bin{id+1}"
     else:
         raise RuntimeError("Unknown naming convention: " + convention)
 
