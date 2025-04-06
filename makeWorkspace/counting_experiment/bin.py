@@ -16,9 +16,9 @@ class Bin:
         self.convention = convention
 
         if self.convention == "BU":
-            self.binid = "cat_%s_ch_%s_bin_%d" % (catid, chid, id)
+            self.binid = f"cat_{catid}_ch_{chid}_bin_{id}"
         elif self.convention == "IC":
-            self.binid = "cat_%s_ch_%s_bin%d" % (catid, chid, id + 1)
+            self.binid = f"cat_{catid}_ch_{chid}_bin{id + 1}"
 
         self.wspace_out = wspace_out
         self.wspace_out._safe_import = SafeWorkspaceImporter(self.wspace_out)
@@ -28,7 +28,7 @@ class Bin:
         self.var = self.wspace_out.var(var.GetName())
         # self.dataset   = self.wspace.data(datasetname)
 
-        self.rngename = "rnge_%s" % self.binid
+        self.rngename = f"rnge_{self.binid}"
         self.var.setRange(self.rngename, xmin, xmax)
         self.xmin = xmin
         self.xmax = xmax
@@ -55,13 +55,13 @@ class Bin:
 
     def add_background(self, bkg):
         if "Purity" in bkg:
-            tmp_pfunc = ROOT.TF1("tmp_bkg_%s" % self.id, bkg.split(":")[-1])  # ?
+            tmp_pfunc = ROOT.TF1(f"tmp_bkg_{self.id}", bkg.split(":")[-1])  # ?
             b = self.o * (1 - tmp_pfunc.Eval(self.cen))
             # self.constBkg = False
         else:
             bkg_set = self.wspace.data(bkg)
             # if not self.wspace_out.data(bkg): self.wspace_out._import(bkg)
-            b = bkg_set.sumEntries("%s>=%g && %s<%g " % (self.var.GetName(), self.xmin, self.var.GetName(), self.xmax))
+            b = bkg_set.sumEntries(f"{self.var.GetName()}>={self.xmin} && {self.var.GetName}<{self.xmax} ")
 
         # Now model nuisances for background
         nuisances = self.cr.ret_bkg_nuisances()
@@ -75,33 +75,31 @@ class Bin:
                     print("Adding Background Nuisance ", nuis)
                     # Nuisance*Scale is the model
                     # form_args = ROOT.RooArgList(self.wspace_out.var("nuis_%s"%nuis),self.wspace_out.function("sys_function_%s_%s"%(nuis,self.binid)))
-                    print("Trying to continue", self.wspace_out.function("sys_function_%s_%s" % (nuis, self.binid)).GetName())
-                    print("Does it have an attribute:", self.wspace_out.function("sys_function_%s_%s" % (nuis, self.binid)).getAttribute("temp"))
-                    if self.wspace_out.function("sys_function_%s_%s" % (nuis, self.binid)).getAttribute("temp"):
+                    print("Trying to continue", self.wspace_out.function(f"sys_function_{nuis}_{self.binid}").GetName())
+                    print("Does it have an attribute:", self.wspace_out.function(f"sys_function_{nuis}_{self.binid}").getAttribute("temp"))
+                    if self.wspace_out.function(f"sys_function_{nuis}_{self.binid}").getAttribute("temp"):
                         continue
-                    form_args = ROOT.RooArgList(self.wspace_out.function("sys_function_%s_%s" % (nuis, self.binid)))
-                    delta_nuis = ROOT.RooFormulaVar("delta_bkg_%s_%s" % (self.binid, nuis), "Delta Change from %s" % nuis, "1+@0", form_args)
+                    form_args = ROOT.RooArgList(self.wspace_out.function(f"sys_function_{nuis}_{self.binid}"))
+                    delta_nuis = ROOT.RooFormulaVar(f"delta_bkg_{self.binid}_{nuis}", f"Delta Change from {nuis}", "1+@0", form_args)
                     self.wspace_out._import(delta_nuis, ROOT.RooFit.RecycleConflictNodes())
                     nuis_args.add(self.wspace_out.function(delta_nuis.GetName()))
-                prod = ROOT.RooProduct("prod_background_%s" % self.binid, "Nuisance Modifier", nuis_args)
+                prod = ROOT.RooProduct(f"prod_background_{self.binid}", "Nuisance Modifier", nuis_args)
             else:
                 print("Adding Background Nuisance ", nuisances[0])
                 # if (self.wspace_out.function.getAttribute("temp")):
                 ##  prod = ROOT.RooFormulaVar("prod_background_%s"%self.binid,"Delta Change in Background from %s"%nuisances[0],"1",ROOT.RooArgList())
                 # else:
                 prod = ROOT.RooFormulaVar(
-                    "prod_background_%s" % self.binid,
-                    "Delta Change in Background from %s" % nuisances[0],
+                    f"prod_background_{self.binid}",
+                    f"Delta Change in Background from {nuisances[0]}",
                     "1+@0",
-                    ROOT.RooArgList(self.wspace_out.function("sys_function_%s_%s" % (nuisances[0], self.binid))),
+                    ROOT.RooArgList(self.wspace_out.function(f"sys_function_{nuisances[0]}_{self.binid}")),
                 )
 
-            self.b = ROOT.RooFormulaVar(
-                "background_%s" % self.binid, "Number of expected background events in %s" % self.binid, "@0*%f" % b, ROOT.RooArgList(prod)
-            )
+            self.b = ROOT.RooFormulaVar(f"background_{self.binid}", f"Number of expected background events in {self.binid}", f"@0*{b}", ROOT.RooArgList(prod))
         else:
             self.b = ROOT.RooFormulaVar(
-                "background_%s" % self.binid, "Number of expected background events in %s" % self.binid, "@0", ROOT.RooArgList(ROOT.RooFit.RooConst(b))
+                f"background_{self.binid}", f"Number of expected background events in {self.binid}", "@0", ROOT.RooArgList(ROOT.RooFit.RooConst(b))
             )
         self.wspace_out._import(self.b)
         self.b = self.wspace_out.function(self.b.GetName())
@@ -112,13 +110,13 @@ class Bin:
     def set_initY(self, mcdataset):
         print(
             "INIT Y: ",
-            "%s>=%g && %s<%g" % (self.var.GetName(), self.xmin, self.var.GetName(), self.xmax),
+            f"{self.var.GetName()}>={self.xmin} && {self.var.GetName()}<{self.xmax}",
             self.rngename,
             self.wspace,
             self.wspace.data(mcdataset),
             mcdataset,
         )
-        self.initY = self.wspace.data(mcdataset).sumEntries("%s>=%g && %s<%g" % (self.var.GetName(), self.xmin, self.var.GetName(), self.xmax), self.rngename)
+        self.initY = self.wspace.data(mcdataset).sumEntries(f"{self.var.GetName()}>={self.xmin} && {self.var.GetName()}<{self.xmax}", self.rngename)
 
     def set_initE_precorr(self):
         return 0
@@ -143,11 +141,11 @@ class Bin:
 
     def set_sfactor(self, val):
         # print "Scale Factor for " ,self.binid,val
-        if self.wspace_out.var("sfactor_%s" % self.binid):
+        if self.wspace_out.var(f"sfactor_{self.binid}"):
             self.sfactor.setVal(val)
             self.wspace_out.var(self.sfactor.GetName()).setVal(val)
         else:
-            self.sfactor = ROOT.RooRealVar("sfactor_%s" % self.binid, "Scale factor for bin %s" % self.binid, val, 0.00001, 10000)
+            self.sfactor = ROOT.RooRealVar(f"sfactor_{self.binid}", f"Scale factor for bin {self.binid}", val, 0.00001, 10000)
             self.sfactor.removeRange()
             self.sfactor.setConstant()
             self.wspace_out._import(self.sfactor, ROOT.RooFit.RecycleConflictNodes())
@@ -157,7 +155,7 @@ class Bin:
         if not len(functionalForm):
             if not self.wspace_out.var(naming_convention(self.id, self.catid, self.convention)):
                 self.model_mu = ROOT.RooRealVar(
-                    naming_convention(self.id, self.catid, self.convention), "Model of N expected events in %d" % self.id, self.initY, 0, 3 * self.initY
+                    naming_convention(self.id, self.catid, self.convention), f"Model of N expected events in {self.id}", self.initY, 0, 3 * self.initY
                 )
                 # self.model_mu.removeMax() TODO
             else:
@@ -165,11 +163,11 @@ class Bin:
         else:
             print("Setting up dependence!!")
             if self.convention == "BU":
-                DEPENDANT = "%s_bin_%d" % (functionalForm, self.id)
+                DEPENDANT = f"{functionalForm}_bin_{self.id}"
             else:
-                DEPENDANT = "%s_bin%d" % (functionalForm, self.id + 1)
+                DEPENDANT = f"{functionalForm}_bin{self.id + 1}"
 
-            self.model_mu = self.wspace_out.function("pmu_%s" % (DEPENDANT))
+            self.model_mu = self.wspace_out.function(f"pmu_{DEPENDANT}")
 
         arglist = ROOT.RooArgList((self.model_mu), self.wspace_out.var(self.sfactor.GetName()))
 
@@ -180,40 +178,39 @@ class Bin:
             if len(nuisances) > 1:
                 nuis_args = ROOT.RooArgList()
                 for nuis in nuisances:
-                    if self.wspace_out.function("sys_function_%s_%s" % (nuis, self.binid)).getAttribute("temp"):
+                    if self.wspace_out.function(f"sys_function_{nuis}_{self.binid}").getAttribute("temp"):
                         continue
 
                     print("Adding Nuisance ", nuis)
                     # Nuisance*Scale is the model
                     # form_args = ROOT.RooArgList(self.wspace_out.var("nuis_%s"%nuis),self.wspace_out.function("sys_function_%s_%s"%(nuis,self.binid)))
-                    form_args = ROOT.RooArgList(self.wspace_out.function("sys_function_%s_%s" % (nuis, self.binid)))
-                    delta_nuis = ROOT.RooFormulaVar("delta_%s_%s" % (self.binid, nuis), "Delta Change from %s" % nuis, "1+@0", form_args)
+                    form_args = ROOT.RooArgList(self.wspace_out.function(f"sys_function_{nuis}_{self.binid}"))
+                    delta_nuis = ROOT.RooFormulaVar(f"delta_{self.binid}_{nuis}", f"Delta Change from {nuis}", "1+@0", form_args)
                     self.wspace_out._import(delta_nuis, ROOT.RooFit.RecycleConflictNodes())
                     nuis_args.add(self.wspace_out.function(delta_nuis.GetName()))
 
-                prod = ROOT.RooProduct("prod_%s" % self.binid, "Nuisance Modifier", nuis_args)
+                prod = ROOT.RooProduct(f"prod_{self.binid}", "Nuisance Modifier", nuis_args)
             else:
                 print("Adding Nuisance ", nuisances[0])
                 prod = ROOT.RooFormulaVar(
-                    "prod_%s" % self.binid,
-                    "Delta Change from %s" % nuisances[0],
+                    f"prod_{self.binid}" f"Delta Change from {nuisances[0]}",
                     "1+@0",
-                    ROOT.RooArgList(self.wspace_out.function("sys_function_%s_%s" % (nuisances[0], self.binid))),
+                    ROOT.RooArgList(self.wspace_out.function(f"sys_function_{nuisances[0]}_{self.binid}")),
                 )
             arglist.add(prod)
-            self.pure_mu = ROOT.RooFormulaVar("pmu_%s" % self.binid, "Number of expected (signal) events in %s" % self.binid, "(@0*@1)*@2", arglist)
+            self.pure_mu = ROOT.RooFormulaVar(f"pmu_{self.binid}", f"Number of expected (signal) events in {self.binid}", "(@0*@1)*@2", arglist)
         else:
-            self.pure_mu = ROOT.RooFormulaVar("pmu_%s" % self.binid, "Number of expected (signal) events in %s" % self.binid, "(@0*@1)", arglist)
+            self.pure_mu = ROOT.RooFormulaVar(f"pmu_{self.binid}", f"Number of expected (signal) events in {self.binid}", "(@0*@1)", arglist)
         # Finally we add in the background
         bkgArgList = ROOT.RooArgList(self.pure_mu)
         # if self.constBkg: self.mu = ROOT.RooFormulaVar("mu_%s"%self.binid,"Number of expected events in %s"%self.binid,"%f+@0"%self.b,bkgArgList)
         # else : self.mu = ROOT.RooFormulaVar("mu_%s"%self.binid,"Number of expected events in %s"%self.binid,"@0/%f"%self.b,bkgArgList)
-        self.mu = ROOT.RooFormulaVar("mu_%s" % self.binid, "Number of expected events in %s" % self.binid, "@0", bkgArgList)
+        self.mu = ROOT.RooFormulaVar(f"mu_{self.binid}", f"Number of expected events in {self.binid}", "@0", bkgArgList)
 
         # self.mu = ROOT.RooFormulaVar("mu_%s"%self.binid,"Number of expected events in %s"%self.binid,"@0/(@1*@2)",ROOT.RooArgList(self.integral,self.sfactor,self.pdfFullInt))
         self.wspace_out._import(self.mu, ROOT.RooFit.RecycleConflictNodes())
         self.wspace_out._import(self.obs, ROOT.RooFit.RecycleConflictNodes())
-        self.wspace_out.factory("Poisson::pdf_%s(observed,mu_%s)" % (self.binid, self.binid))
+        self.wspace_out.factory(f"Poisson::pdf_{self.binid}(observed,mu_{self.binid}")
 
     def add_to_dataset(self):
         return
@@ -293,7 +290,7 @@ class Bin:
             self.o,
             ", expected = ",
             self.wspace_out.function(self.mu.GetName()).getVal(),
-            " (of which %f is background)" % self.ret_background(),
+            f" (of which {self.ret_background()} is background)",
             ", scale factor = ",
             self.wspace_out.function(self.sfactor.GetName()).getVal(),
         )
