@@ -153,36 +153,62 @@ class Category:
         sample = self._wspace_out.cat("bin_number")
         # print "zeynep sample", sample, self._wspace_out.cat("bin_number")
 
-        # for j,cr in enumerate(self._control_regions):
+        # This loops for every process in the model and builds `Bin` objects.
+        # Each of the `Bin` builds the modeled number of events for that process
+        # in that mjj bin as a function of the nuissances affecting that process
+        # and transfer factors to express it as a function of QCD Znunu in the SR
         for j, cr in enumerate(self._control_regions):
             for i, bl in enumerate(self._bins):
+
+                # Fetch the edges of the bin
                 if i >= len(self._bins) - 1:
                     continue
                 xmin, xmax = bl, self._bins[i + 1]
                 if i == len(self._bins) - 2:
                     xmax = 999999.0
+
+                # Initialize the bin, with IDs to link it to the process and model,
                 ch = Bin(self.category, self.catid, cr.chid, i, self._var, "", self._wspace, self._wspace_out, xmin, xmax, convention=self.convention)
+                # link the process
+
+                # This is unused
                 ch.set_control_region(cr)
                 if cr.has_background():
                     ch.add_background(cr.ret_background())
-                ch.set_label(sample)  # should import the sample category label
-                ch.set_initY(self._target_datasetname)
-                ch.set_sfactor(cr.ret_sfactor(i))
-                # This has to the the last thing
-                # Note, we can have an expected value which is itself a RooFormulaVar
 
-                # model_mu added to ws somewhere setup_expect_var (in else block)
+                ch.set_label(sample)  # should import the sample category label
+
+                # set the "initial yield" to the number of events of the process of that category for that mjj bin.
+                # This is only usefull for process in the `qcd_zjets` model,
+                # where initY is set to the yield of QCD Znunu in the SR
+                ch.set_initY(self._target_datasetname)
+
+                # Set the "scale factor" for this mjj bin (rather a transfer factor),
+                # the ratio between the yield of the process of the "control region" and
+                # the process of the "category" (e.g. in the `ewk_zjets` model, it would be process / EWK Znunu in SR)
+                ch.set_sfactor(cr.ret_sfactor(i))
+
+                # Compute the expected number of events as a function of QCD Znunu in the SR.
+                # This is done as a product of transfer factors such that
+                # every process is only parametrized by the QCD Znunu yield (and nuisances)
+                #
+                # for the "non dependant" case (only `qcd_zjets`), the QCD Znunu in the SR and a single transfer factors are used
+                # otherwise, for the "dependant" case, the expression passed to `setup_expect_var` is used
+                # to fetch the transfer factors and nuisances from the category it depends on, which is then multiplied
+                # to another transfer factor and set of nuisances.
                 if self.isSecondDependant:
                     ch.setup_expect_var(f"cat_{self.category}_{self.BASE}_ch_{self.CONTROL}")
                 else:
                     ch.setup_expect_var()
 
+                # (Not usefull for the fit)
                 # initialise expected  (but this will be somewhat a "post" state), i.e after fiddling with the nuisance parameters.
                 ch.set_initE()
                 ch.add_to_dataset()
                 self.channels.append(ch)
         # fit is buggered so need to scale by 1.1
 
+        # Save the prefit histograms (these are not used by the combine fit)
         for j, cr in enumerate(self._control_regions):
             # save the prefit histos
             cr_pre_hist = ROOT.TH1F(
@@ -194,6 +220,8 @@ class Category:
             self.all_hists.append(cr_pre_hist.Clone())
             self.cr_prefit_hists.append(cr_pre_hist.Clone())
 
+        # Purpose of this is unclear
+        # Maybe to check everything is computed correctly in all bins of all processes?
         for i, bl in enumerate(self.channels):
             if i >= len(self._bins) - 1:
                 break

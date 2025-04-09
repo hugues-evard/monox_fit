@@ -37,15 +37,9 @@ def collect_git_info() -> list[str]:
     ]
 
 
-def copy_systematic_files(destination_dir: str, analysis: str) -> None:
-    """Copy systematic .root files to the output directory."""
-    for file_path in glob.glob(f"sys/{analysis}_qcd_nckw_ws_201*.root"):
-        shutil.copy(file_path, destination_dir)
-
-
 def create_makefile_symlink(output_dir: str, analysis: str) -> None:
     """Create or update symlink to the Makefile in the parent of the output directory."""
-    makefile_source = os.path.realpath(f"../{analysis}/templates/Makefile")
+    makefile_source = os.path.realpath(f"{analysis}/templates/Makefile")
     makefile_link = os.path.join(os.path.dirname(output_dir), "Makefile")
     if os.path.exists(makefile_link) or os.path.islink(makefile_link):
         os.remove(makefile_link)
@@ -65,7 +59,7 @@ def generate_info_lines(input_dir: str, input_filename: str, output_dir: str) ->
     return lines
 
 
-def run_workspace_pipeline(input_dir: str, analysis: str, year: str, tag: str, variable: str, root_folder: Optional[str] = None) -> None:
+def build_workspace(input_dir: str, analysis: str, year: str, tag: str, variable: str, root_folder: Optional[str] = None) -> None:
     """Run the full pipeline for a given category and date tag."""
     input_dir = os.path.realpath(input_dir)
     category = f"{analysis}_{year}"
@@ -84,15 +78,12 @@ def run_workspace_pipeline(input_dir: str, analysis: str, year: str, tag: str, v
     generate_combine_model(input_filename=workspace_file, output_filename=combined_model_file, category=category)
 
     logger.info("Finalizing...")
-    # copy_systematic_files(output_dir, analysis)
 
     with open(info_file, "w") as f:
         info_lines = generate_info_lines(input_dir, input_filename, output_dir)
         f.write("\n".join(info_lines) + "\n")
 
-    logger.info("Creating Makefile symlink and running make...")
-    # create_makefile_symlink(output_dir,analysis)
-    # execute_command("make cards", description="Build datacards")
+    create_makefile_symlink(output_dir, analysis)
 
     logger.info(f"Done! Output path: {os.path.dirname(output_dir)}")
 
@@ -113,7 +104,7 @@ def main() -> None:
     root_folder = args.folder or f"category_{args.analysis}_{args.year}"
     tag = args.tag or date.today().strftime("%Y_%m_%d")
 
-    run_workspace_pipeline(input_dir=input_dir, analysis=args.analysis, year=args.year, tag=tag, variable=args.variable, root_folder=root_folder)
+    build_workspace(input_dir=input_dir, analysis=args.analysis, year=args.year, tag=tag, variable=args.variable, root_folder=root_folder)
 
 
 if __name__ == "__main__":

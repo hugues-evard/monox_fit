@@ -86,8 +86,8 @@ def get_jes_file(category: str) -> ROOT.TFile:
     """Get the JES shape uncertainty ROOT file."""
     jer_suffix = "jer_smeared" if "vbf" in category else "not_jer_smeared"
     jes_files = {
-        r"(monoj|monov).*": f"sys/monoj_monov_shape_jes_uncs_smooth_{jer_suffix}.root",
-        r"vbf.*": f"inputs/sys/vbf_shape_jes_uncs_smooth_{jer_suffix}.root",
+        r"(monoj|monov).*": f"inputs/sys/{category}/monoj_monov_shape_jes_uncs_smooth_{jer_suffix}.root",
+        r"vbf.*": f"inputs/sys/{category}/vbf_shape_jes_uncs_smooth_{jer_suffix}.root",
     }
     for pattern, filepath in jes_files.items():
         if re.match(pattern, category):
@@ -149,7 +149,7 @@ def get_photon_id_variations(hist: ROOT.TH1, category: str) -> dict[str, ROOT.TH
     }
 
     variations = {}
-    f_pho = ROOT.TFile("inputs/sys/photon_id_unc.root", "READ")
+    f_pho = ROOT.TFile(f"inputs/sys/{category}/photon_id_unc.root", "READ")
     for variation, histo_name in name_map.items():
         variation_name = f"{hist.GetName()}_{variation}"
         varied_hist = hist.Clone(variation_name)
@@ -195,7 +195,7 @@ def get_diboson_variations(hist: ROOT.TH1, category: str, process: str) -> dict[
     """Apply shape variations from a diboson systematic file."""
     channel = re.sub(r"(loose|tight|_201\d)", "", category)
     variations: dict[str, ROOT.TH1] = {}
-    shape_file = ROOT.TFile("sys/shape_diboson_unc.root", "READ")
+    shape_file = ROOT.TFile(f"inputs/sys/{category}/shape_diboson_unc.root", "READ")
     for key in shape_file.GetListOfKeys():
         key_name = key.GetName()
         if process not in key_name or channel not in key_name:
@@ -245,7 +245,7 @@ def get_signal_theory_variations(hist: ROOT.TH1, category: str) -> dict[str, ROO
         logger.warning(f"No signal theory mapping for process: {real_process}")
         return {}
 
-    theory_file = ROOT.TFile("sys/signal_theory_unc.root", "READ")
+    theory_file = ROOT.TFile(f"inputs/sys/{category}/signal_theory_unc.root", "READ")
     variations: dict[str, ROOT.TH1] = {}
     unc_types = ["pdf", "scale"]
     directions = ["Up", "Down"]
@@ -354,6 +354,7 @@ def write_histogram_to_workspace(
 
     # Write the individual histograms for easy transfer factor calculation later on
     hist.SetDirectory(0)
+    hist.Sumw2()
     output_dir.cd()
     output_dir.WriteTObject(hist)
 

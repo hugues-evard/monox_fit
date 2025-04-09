@@ -85,20 +85,42 @@ def main():
 
             _fDir = _fOut.mkdir("%s_category_%s" % (crn, cn))
 
+            # This `cmodel` functions is where models are created.
+            # This function does two things:
+            # 1) Compute transfer factors
+            #   Processes are express different processes as a ratio with of QCD Znunu in SR
+            #   For the qcd_zjets model, this is directly the ratio of the two processes
+            #   For other models, processes are first taken as a ratio with either EWK Znunu, QCD Wjets and EWK Wjets,
+            #   but these are later expressed as transfer factors to make QCD Znunu appear at the `init_channels` step
+            # 2) Add nuisances and add them to the workspace
+            #   for veto, JES/JER, theory and statistical uncertainties
+            #   for each transfer factor in the model
             if "MTR" in args.rename:
                 cmb_categories.append(x.cmodel(cn, crn, _f, _fDir, out_ws, diag_combined, year, convention="IC"))
             else:
                 cmb_categories.append(x.cmodel(cn, crn, _f, _fDir, out_ws, diag_combined, year))
 
-    # model_mu_cat_vbf_2017_qcd_zjets_bin_0
     for cid, cn in enumerate(cmb_categories):
         print("Run Model: cid, cn", cid, cn)
+        # This is where the actual model distributions as a function of QCD Znunu in SR are made for all processes.
+        # Processes modeled with `qcd_zjets` are expressed as:
+        #   (process yield) * [transfer factor = (QCD Znunu in SR) / (process yield)] * Product of all nuisances
+        # Processes using the other models will first fetch the above model, before multiplying the transfer factor and nuisances
+        # For instance, EWK Zll in the diMuon region, modeled with `ewk_zjets` will fetch
+        #   (EWK Znunu in SR) * [transfer factor = (QCD Znunu in SR) / (EWK Znunu in SR)] * Product of all nuisances (for EWK Znunu in SR)
+        # and multiply by
+        #   [transfer factor = (EWK Znunu in SR) / (EWK Zll in diMuon)] * Product of all nuisances (for EWK Zll in diMuon)
+        # These models are made for each bin of the mjj distribution and saved to the workspace
         cn.init_channels()
         channels = cn.ret_channels()
 
     # Save a Pre-fit snapshot
     out_ws.saveSnapshot("PRE_EXT_FIT_Clean", out_ws.allVars())
     # Now convert workspace to combine friendly workspace
+
+    # This actually builds the histograms used in the fit
+    # It fetches the modeled distribution for every bin of every process computed at the above `init_channels` step
+    # and stores them as the `RooParametricHist` that will be used in the datacard
     convertToCombineWorkspace(out_ws, _f, args.categories, cmb_categories, controlregions_def, args.rename)
     _fOut.WriteTObject(out_ws)
 

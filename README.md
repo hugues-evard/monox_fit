@@ -25,3 +25,65 @@ cd $CMSSW_BASE/src
 git clone https://github.com/cms-analysis/CombineHarvester.git CombineHarvester
 scram b -j4
 ```
+
+## Create the workspace
+
+Make sure to source your environment before running anything:
+```
+source setup_env.sh 
+```
+To build the workspace and combined model, use the script `build_workspace.py`. This script:
+
+1.	Generates a RooWorkspace from histograms in a ROOT file.
+2.	Builds a combined model compatible with CMS Combine.
+3.	Creates INFO.txt with input/output checksums and Git metadata.
+4.	Symlinks a Makefile into the output folder for producing datacards.
+
+
+To run it, execute
+```bash
+python3 build_workspace.py -d <input_dir> -a <analysis> -y <year> -v <variable> [-f <root_folder>] [-t <tag>]
+```
+
+The script takes these optional arguments:
+
+| Argument         | Description                                                  | Default         |
+|------------------|--------------------------------------------------------------|-----------------|
+| `-d`, `--dir`     | Path to directory containing the input ROOT file             | *(required)*    |
+| `-a`, `--analysis` | Analysis name: `vbf`, `monojet`, `monov`, etc.              | `"vbf"`         |
+| `-y`, `--year`    | Year of the dataset: `2017`, `2018`, or `Run3`               | `"2017"`        |
+| `-v`, `--variable`| Observable variable name: `mjj`, `met`, etc.                 | `"mjj"`         |
+| `-f`, `--folder`  | Folder inside the ROOT file to look for histograms           | auto-detected   |
+| `-t`, `--tag`     | Custom output tag (used in output folder name)               | today’s date    |
+
+
+Example:
+
+```bash
+python3 build_workspace.py \
+  -d /path/to/inputs \
+  -a vbf \
+  -y 2018 \
+  -v mjj \
+  -t 2025_03_31
+```
+
+This will:
+
+- Read `/path/to/inputs/limit_vbf.root`
+- Create a workspace and model for category `vbf_2018`
+- Output files in:  
+  `$FIT_FRAMEWORK_PATH/vbf/2018/2025_03_31/root/`
+
+-
+
+```
+vbf/
+└── 2018/
+    └── 2025_03_31/
+        ├── root/
+        │   ├── ws_vbf.root                # The RooWorkspace
+        │   ├── combined_model_vbf.root    # The Combine-ready model
+        │   ├── INFO.txt                   # MD5 + Git info
+        │   └── Makefile                   # Symlink for Combine datacards
+```

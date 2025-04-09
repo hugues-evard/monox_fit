@@ -177,10 +177,10 @@ def dataValidation(region1, region2, category, ws_file, fitdiag_file, outdir, lu
     uncertainties = []
     if "mono" in category:
         if region2 == "gjets":
-            uncFile = TFile(os.path.join(DIR, "../makeWorkspace/sys/vjets_reco_theory_unc.root"))
-            uncFile_pdf = TFile(os.path.join(DIR, "../makeWorkspace/sys/tf_pdf_unc.root"))
-            uncFile_photon = TFile(os.path.join(DIR, "../makeWorkspace/sys/photon_id_unc.root"))
-            uncFile_photon_scale = TFile(os.path.join(DIR, "../makeWorkspace/sys/photon_scale_unc.root"))
+            uncFile = TFile(os.path.join(DIR, f"../inputs/sys/{category}/vjets_reco_theory_unc.root"))
+            uncFile_pdf = TFile(os.path.join(DIR, f"../inputs/sys/{category}/tf_pdf_unc.root"))
+            uncFile_photon = TFile(os.path.join(DIR, f"../inputs/sys/{category}/photon_id_unc.root"))
+            uncFile_photon_scale = TFile(os.path.join(DIR, f"../inputs/sys/{category}/photon_scale_unc.root"))
             if "monojet" in category:
                 uncertainties = uncertainties + [
                     uncFile.monojet_z_over_g_d1k_up,
@@ -225,8 +225,8 @@ def dataValidation(region1, region2, category, ws_file, fitdiag_file, outdir, lu
                     uncertainties.append(scale_uncertainty_histogram(uncFile_photon.monov_2018_photon_id_up, 2))
                 uncertainties.append(scale_uncertainty_histogram(uncFile_photon_scale.Get("photon_pt_scale_monov_0.02_up"), 0.5))
         if "wjets" in (region1, region2):
-            uncFile = TFile(os.path.join(DIR, "../makeWorkspace/sys/vjets_reco_theory_unc.root"))
-            uncFile_pdf = TFile(os.path.join(DIR, "../makeWorkspace/sys/tf_pdf_unc.root"))
+            uncFile = TFile(os.path.join(DIR, f"../inputs/sys/{category}/vjets_reco_theory_unc.root"))
+            uncFile_pdf = TFile(os.path.join(DIR, f"../inputs/sys/{category}/tf_pdf_unc.root"))
             if "monojet" in category:
                 uncertainties = [
                     uncFile.monov_z_over_w_d1k_up,
@@ -255,7 +255,7 @@ def dataValidation(region1, region2, category, ws_file, fitdiag_file, outdir, lu
                 ]
         uncertainties += ["experiment"]
     else:
-        uncFile = TFile(os.path.join(DIR, "../makeWorkspace/sys/vbf_z_w_gjets_theory_unc_ratio_unc.root"))
+        uncFile = TFile(os.path.join(DIR, f"../inputs/sys/{category}/vbf_z_w_gjets_theory_unc_ratio_unc.root"))
         uncertainties = [
             "w_ewkcorr_overz_common",
             "zoverw_nlo_muf",

@@ -31,6 +31,8 @@ def convert_to_combine_workspace(
     wlocal = fdir.Get(f"wspace_{cat}")
 
     # Identify observable variable and template histogram
+    # Initialize samplehist with the first histogram we find in the directory, then break out of the loop
+    # samplehist is only passed to initialized the shape of the RooParametricHist
     samplehist = None
     for key in fdir.GetListOfKeys():
         obj = key.ReadObj()
@@ -44,6 +46,7 @@ def convert_to_combine_workspace(
     nbins = samplehist.GetNbinsX()
     varname = samplehist.GetXaxis().GetTitle()
 
+    # Fetch the mjj variable, rename it to vbf_{year}_mjj
     logger.info(varname)
     varl = wlocal.var(varname)
     logger.info("VAR NAME {varl.GetName()} {rename_variable}")
@@ -54,7 +57,9 @@ def convert_to_combine_workspace(
         # import a Renamed copy of the variable ...
         varl.SetName(f"{varname}_{cat}")
 
-    # Import all valid histograms in the category
+    # Loop other all the histograms in the directory for the year
+    # convert them to RooDataHist (as a function of mjj) and
+    # save them to the workspace
     for key in fdir.GetListOfKeys():
         obj = key.ReadObj()
         logger.info(f"{obj.GetName()}, {obj.GetTitle()}, {type(obj)}")
@@ -68,10 +73,16 @@ def convert_to_combine_workspace(
         wsin_combine._import(dhist)
 
     # Add in the V-jets backgrounds MODELS
+    # Loop over all models (`Category` objects) and all their "control regions" (`Channel` objects)
+    # to fetch the expected number of events (parametrized by QCD Znunu in SR and nuisances) for all process
+    # and store them as RooParametricHist in the workspace
     for crn in controlregions_def:
         cr_def = __import__(crn)
 
         # Parametric model expectations
+        # This part is to extract the process that is used to parametrize all the others,
+        # so for vbf, this is QCD Znunu in SR
+        # First, we fetch the expected number of events in every bin, then convert them to a RooParametricHist and save it to the workspace
         expectations = ROOT.RooArgList()
         for b in range(nbins):
             var = wsin_combine.var(f"model_mu_cat_{cat}_{cr_def.model}_bin_{b}")
@@ -87,13 +98,20 @@ def convert_to_combine_workspace(
             wsin_combine._import(norm)
 
         # Add control region models
+        # This part is to extract all other processes parametrized by QCD Znunu in SR,
+        # convert and save them to RooParametricHist in the workspace
         for cn in cmb_categories:
             logger.info(f"CHECK {cn.catid} {cn.cname}")
+            # TODO: we are already looping through every model,
+            # is this loop really needed? We are continuing
+            # if we don't match the imported model anyway
             if cn.catid != f"{cat}_{cr_def.model}" or cn.cname != crn:
                 continue
 
+            # Loop over all process in the category
             for cr in cn.ret_control_regions():
                 cr_expectations = ROOT.RooArgList()
+                # Fetch the expected number of events for the process for every bin, paramertized by QCD Znunu in SR and nuisances
                 for b in range(nbins):
                     binstr = f"bin{b + 1}" if "MTR" in rename_variable else f"bin_{b}"
                     func = wsin_combine.function(f"pmu_cat_{cat}_{cr_def.model}_ch_{cr.chid}_{binstr}")
@@ -103,6 +121,7 @@ def convert_to_combine_workspace(
                 logger.info(f"Building CR model: {model_name}")
                 cr_expectations.Print()
                 print("Look here", samplehist.GetNbinsX(), cr_expectations.getSize())
+                # Convert the distribution to RooParametricHist, save to the workspace
                 cr_phist = ROOT.RooParametricHist(
                     model_name,
                     f"Expected Shape for {cr.crname} in control region in Category {cat}",
@@ -115,6 +134,8 @@ def convert_to_combine_workspace(
                 wsin_combine._import(cr_norm)
 
     # Log external nuisance parameters
+    # This is the part that prints what parameters should added at the end of the datacard
+    # (e.g. the statistical uncertainty for each bin of each process)
     allparams = ROOT.RooArgList(wsin_combine.allVars())
     for i in range(allparams.getSize()):
         par = allparams.at(i)

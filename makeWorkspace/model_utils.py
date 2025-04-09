@@ -275,7 +275,7 @@ def add_jes_jer_uncertainties(
     }
     # Get the JES/JER uncertainty file for transfer factors
     # Read the split uncertainties from there
-    fjes = get_jes_jer_source_file_for_tf(category="vbf")
+    fjes = get_jes_jer_source_file_for_tf(category=category_id)
     jet_variations = get_jes_variations(fjes, year, proc=production_mode)
 
     for sample in channel_list:
@@ -338,7 +338,7 @@ def add_theory_uncertainties(
         output_file.WriteTObject(sample)
 
     # File containting the theory uncertainties
-    vbf_sys = ROOT.TFile.Open("sys/vbf_z_w_gjets_theory_unc_ratio_unc.root")
+    vbf_sys = ROOT.TFile.Open(f"inputs/sys/{category_id}/vbf_z_w_gjets_theory_unc_ratio_unc.root")
 
     nbins = target_sample.GetNbinsX()
 
