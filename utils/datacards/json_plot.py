@@ -4,26 +4,44 @@ import json
 import argparse
 import subprocess
 
-# Load the two JSON files
-parser = argparse.ArgumentParser(description="Arguments for workspace creation.")
-parser.add_argument("--file", type=str)
-parser.add_argument("--file2", type=str)
-args = parser.parse_args()
 
-path1 = args.file  # , args.file2
-path2 = args.file2 if args.file2 else None
+# def plot(infos, infos2=None):
+#     title, names, values, errors = infos["title"], infos["names"], infos["values"], infos["errors"]
+#     _, names2, values2, errors2 = (infos2["title"], infos2["names"], infos2["values"], infos2["errors"]) if infos2 else (None, None, None, None)
+#     plt.figure(figsize=(12, 6))
+#     plt.errorbar(range(len(values)), values, yerr=errors, fmt="o", capsize=5, capthick=2, markersize=5, linestyle="None")
+#     plt.axhline(0, color="grey", linestyle="--", linewidth=0.7)
+#     plt.xticks(range(len(values)), names, rotation=45, ha="right")
+#     plt.title(title)
+#     plt.ylabel("Postfit value")
+#     plt.grid(True)
+#     plt.tight_layout()
+#     # plt.show()
+#     plt.savefig(f"{title}.pdf")
 
 
-def plot(title, names, values, errors):
+def plot(infos, infos2=None):
+    title, names, values, errors, file = infos["title"], infos["names"], infos["values"], infos["errors"], infos["file"]
     plt.figure(figsize=(12, 6))
-    plt.errorbar(range(len(values)), values, yerr=errors, fmt="o", capsize=5, capthick=2, markersize=5, linestyle="None")
+
+    # X positions for the first set
+    x = range(len(values))
+    plt.errorbar(x, values, yerr=errors, fmt="o", capsize=5, capthick=2, markersize=5, linestyle="None", label=file.split("/")[0])
+
+    # Plot second set if provided
+    if infos2:
+        names2, values2, errors2, file2 = infos2["names"], infos2["values"], infos2["errors"], infos2["file"]
+        # Offset x positions slightly
+        x2 = [xi + 0.2 for xi in x]
+        plt.errorbar(x2, values2, yerr=errors2, fmt="s", capsize=5, capthick=2, markersize=5, linestyle="None", label=file2.split("/")[0], color="orange")
+
     plt.axhline(0, color="grey", linestyle="--", linewidth=0.7)
-    plt.xticks(range(len(values)), names, rotation=45, ha="right")
+    plt.xticks(x, names, rotation=45, ha="right")
     plt.title(title)
     plt.ylabel("Postfit value")
     plt.grid(True)
+    plt.legend()
     plt.tight_layout()
-    # plt.show()
     plt.savefig(f"{title}.pdf")
 
 
@@ -34,13 +52,16 @@ def filter_data(data, condition):
     return filtered
 
 
+parser = argparse.ArgumentParser(description="Arguments for workspace creation.")
+parser.add_argument("--file", type=str)
+parser.add_argument("--file2", type=str)
+args = parser.parse_args()
+
+path1 = args.file  # , args.file2
+path2 = args.file2 if args.file2 else None
+
 data = json.load(open(path1))["params"]
 data2 = json.load(open(path2))["params"] if path2 else None
-
-# title = "QCDscale"
-# qcdscale_data = filter_data(data, condition=title)
-# names, values, errors = zip(*qcdscale_data)
-# plot(title, names, values, errors)
 
 plotlist = [
     "CMS",
@@ -66,38 +87,46 @@ plotlist = [
 ]
 
 for title in plotlist:
-
     if title == "jes":
         filt_data = filter_data(data, condition=title) + filter_data(data, condition="jer")
+        filt_data2 = filter_data(data2, condition=title) + filter_data(data2, condition="jer") if data2 else []
     elif title == "misc":
         filt_data = filter_data(data, condition="Top_Reweight13TeV") + filter_data(data, condition="UEPS") + filter_data(data, condition="ZJets_Norm13TeV")
+        filt_data2 = (
+            filter_data(data2, condition="Top_Reweight13TeV") + filter_data(data2, condition="UEPS") + filter_data(data2, condition="ZJets_Norm13TeV")
+            if data2
+            else []
+        )
     else:
         filt_data = filter_data(data, condition=title)
+        filt_data2 = filter_data(data2, condition=title) if data2 else []
 
     names, values, errors = zip(*filt_data)
-    plot(title, names, values, errors)
+    names2, values2, errors2 = zip(*filt_data2) if data2 else ([], [], [])
 
-subprocess.run(["pdfunite"] + [f"{title}.pdf" for title in plotlist] + ["out.pdf"])
+    # Remove entries from names2 that are not in names
+    idx, names2 = zip(*[(idx, name) for (idx, name) in enumerate(names2) if name in names])
+    names2 = list(names2)
+    values2 = [values2[i] for i in idx]
+    errors2 = [errors2[i] for i in idx]
+
+    # Pad entries in names not in names2
+    to_pad = set(names) - set(names2)
+    idx_to_pad = [names.index(name) for name in to_pad]
+    idx_to_pad.sort()
+    for idx in reversed(idx_to_pad):
+        names2.insert(idx, names[idx])
+        values2.insert(idx, 0.0)
+        errors2.insert(idx, 0.0)
+
+    names2, values2, errors2 = tuple(names2), tuple(values2), tuple(errors2)
+
+    info_1 = {"title": title, "names": names, "values": values, "errors": errors, "file": path1}
+    info_2 = {"title": title, "names": names2, "values": values2, "errors": errors2, "file": path2} if data2 else None
+
+    plot(info_1, info_2)
+
+
+# Merge all plots into a single PDF
+subprocess.run(["pdfunite"] + [f"{title}.pdf" for title in plotlist] + ["postfit_np.pdf"])
 subprocess.run(["rm"] + [f"{title}.pdf" for title in plotlist])
-
-
-# title = "rate_st"
-# rate_st = filter_data(data, condition=title)
-# names, values, errors = zip(*rate_st)
-# plot(title, names, values, errors)
-
-# title = "rate_others2"
-# rate_others2 = filter_data(data, condition=title)
-# names, values, errors = zip(*rate_others2)
-# plot(title, names, values, errors)
-
-# title = "prop"
-# prop = filter_data(data, condition=title)
-# names, values, errors = zip(*prop)
-# values, errors = np.array(values), np.array(errors)
-# mask = abs(values / errors) > 3
-# names = [name for name, m in zip(names, mask) if m]
-# values = values[mask]
-# errors = errors[mask]
-
-# plot(title, names, values, errors)
