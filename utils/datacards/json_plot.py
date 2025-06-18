@@ -5,21 +5,14 @@ import argparse
 import subprocess
 
 
-def plot_combined(infos, infos2=None, max_impact=1.0):
-    # Infos from first file
-    title = infos["title"]
-    names = infos["names"]
-    impacts = infos["impacts"]
-    values = infos["values"]
-    errors = infos["errors"]
-    file1 = infos["file"]
+def plot_combined(title: str, names: list[str], all_data: list[dict], max_impact: float = 1.0, labels=[]) -> None:
 
-    # Infos from second file (if available)
-    if infos2:
-        impacts2 = infos2["impacts"]
-        values2 = infos2["values"]
-        errors2 = infos2["errors"]
-        file2 = infos2["file"]
+    impacts = [data["impacts"] for data in all_data]
+    values = [data["values"] for data in all_data]
+    errors = [data["errors"] for data in all_data]
+
+    markers = ["o", "s", "D", "^", "v", "x", "p", "*"]
+    colors = ["blue", "orange", "green", "red", "purple", "brown", "pink"]
 
     # X axis, based on how many data points we have
     x = range(len(names))
@@ -33,18 +26,22 @@ def plot_combined(infos, infos2=None, max_impact=1.0):
     # Normalize impacts if the maximum impact is not 1.0
     if max_impact != 1.0:
         # Normalize impacts to the maximum impact value
-        impacts = [100.0 * imp / max_impact for imp in impacts]
+        impacts = [[100.0 * imp / max_impact for imp in impact_list] for impact_list in impacts]
         ax1.set_ylim(-5, 105)
         ax1.plot([], [], " ", color="k", label=f"Max impact: {max_impact:.3f}")
         impact_ylabel = "Impact / max impact (%)"
-        if infos2:
-            impacts2 = [100.0 * imp / max_impact for imp in impacts2]
-    # Plot data points for the impacts in the first file
-    ax1.plot(x, impacts, "o", markersize=5, linestyle="None", label=file1.split("/")[0])
 
-    # Plot data points for the impacts in the secound file (if available)
-    if infos2:
-        ax1.plot(x, impacts2, "s", markersize=5, linestyle="None", label=file2.split("/")[0], color="orange")
+    # Plot data points for the impacts in the first file
+    for idx, impact_list in enumerate(impacts):
+        ax1.plot(
+            x,
+            impact_list,
+            markers[idx % len(markers)],
+            color=colors[idx % len(colors)],
+            markersize=5,
+            linestyle="None",
+            label=labels[idx] if labels else None,
+        )
 
     # Format plot
     ax1.axhline(0, color="grey", linestyle="--", linewidth=0.7)
@@ -55,12 +52,20 @@ def plot_combined(infos, infos2=None, max_impact=1.0):
 
     # --- Plot postfit values (bottom)
     # Plot error bars for the postfit values in the first file
-    ax2.errorbar(x, values, yerr=errors, fmt="o", markersize=5, linestyle="None", label=file1.split("/")[0])
-    # Plot error bars for the postfit values in the second file (if available)
-    if infos2:
-        # Add a small offset to the x values for the second file to avoid overlap
-        x2 = [xi + 0.2 for xi in x]
-        ax2.errorbar(x2, values2, yerr=errors2, fmt="s", markersize=5, linestyle="None", label=file2.split("/")[0], color="orange")
+    for idx, (value_list, error_list) in enumerate(zip(values, errors)):
+        # list of offset x values for better visibility
+        off_x = [xi + 0.2 * idx for xi in x]
+
+        ax2.errorbar(
+            off_x,
+            value_list,
+            yerr=error_list,
+            fmt=markers[idx % len(markers)],
+            color=colors[idx % len(colors)],
+            markersize=5,
+            linestyle="None",
+            label=labels[idx] if labels else None,
+        )
 
     # Format plot
     ax2.axhline(0, color="grey", linestyle="--", linewidth=0.7)
@@ -81,21 +86,21 @@ def filter_data(data, condition):
     ]
     filtered = sorted(filtered, key=lambda x: "NoTopTag" not in x[0])
     filtered = sorted(filtered, key=lambda x: "CR" not in x[0])
-    return filtered
+
+    names, values, errors, impacts = zip(*filtered) if filtered else ([], [], [], [])
+    filt_data = {"names": list(names), "values": list(values), "errors": list(errors), "impacts": list(impacts)}
+    return filt_data
 
 
 parser = argparse.ArgumentParser(description="Arguments for workspace creation.")
-parser.add_argument("--file", type=str)
-parser.add_argument("--file2", type=str)
+parser.add_argument("--files", type=str, nargs="+")
 args = parser.parse_args()
 
-path1 = args.file  # , args.file2
-path2 = args.file2 if args.file2 else None
+json_paths = args.files
 
-data = json.load(open(path1))["params"]
-data2 = json.load(open(path2))["params"] if path2 else None
+json_data = [json.load(open(path))["params"] for path in json_paths if path]
 
-max_impact = max(param["impact_r"] for param in data)
+max_impact = max(param["impact_r"] for param in json_data[0]) if json_data else 1.0
 
 plotlist = [
     "CMS",
@@ -122,48 +127,39 @@ plotlist = [
 
 for title in plotlist:
     if title == "jes":
-        filt_data = filter_data(data, condition=title) + filter_data(data, condition="jer")
-        filt_data2 = filter_data(data2, condition=title) + filter_data(data2, condition="jer") if data2 else []
+        jer_data = [filter_data(data, condition="jer") for data in json_data]
+        filt_data = [{key: val + jer_data[idx][key] for key, val in filter_data(data, condition=title).items()} for idx, data in enumerate(json_data)]
+
     elif title == "misc":
-        filt_data = filter_data(data, condition="Top_Reweight13TeV") + filter_data(data, condition="UEPS") + filter_data(data, condition="ZJets_Norm13TeV")
-        filt_data2 = (
-            filter_data(data2, condition="Top_Reweight13TeV") + filter_data(data2, condition="UEPS") + filter_data(data2, condition="ZJets_Norm13TeV")
-            if data2
-            else []
-        )
+        Top_data = [filter_data(data, condition="Top_Reweight13TeV") for data in json_data]
+        UEPS_data = [filter_data(data, condition="UEPS") for data in json_data]
+        filt_data = [
+            {key: val + Top_data[idx][key] + UEPS_data[idx][key] for key, val in filter_data(data, condition="ZJets_Norm13TeV").items()}
+            for idx, data in enumerate(json_data)
+        ]
     else:
-        filt_data = filter_data(data, condition=title)
-        filt_data2 = filter_data(data2, condition=title) if data2 else []
+        filt_data = [filter_data(data, condition=title) for data in json_data]
 
-    names, values, errors, impacts = zip(*filt_data)
-    names2, values2, errors2, impacts2 = zip(*filt_data2) if data2 else ([], [], [])
-
-    # Remove entries from names2 that are not in names
-    idx, names2 = zip(*[(idx, name) for (idx, name) in enumerate(names2) if name in names])
-    names2 = list(names2)
-    values2 = [values2[i] for i in idx]
-    errors2 = [errors2[i] for i in idx]
-    impacts2 = [impacts2[i] for i in idx]
+    # Remove entries in subsequent data that are not in the reference names
+    ref_names = filt_data[0]["names"]
+    for extra_data in filt_data[1:]:
+        idx, names = zip(*[(idx, name) for (idx, name) in enumerate(extra_data["names"]) if name in ref_names])
+        extra_data["names"] = list(names)
+        for key in ["values", "errors", "impacts"]:
+            extra_data[key] = [extra_data[key][i] for i in idx]
 
     # Pad entries in names not in names2
-    to_pad = set(names) - set(names2)
-    idx_to_pad = [names.index(name) for name in to_pad]
-    idx_to_pad.sort()
-    for idx in reversed(idx_to_pad):
-        names2.insert(idx, names[idx])
-        values2.insert(idx, 0.0)
-        errors2.insert(idx, 0.0)
-        impacts2.insert(idx, 0.0)
+    for extra_data in filt_data[1:]:
+        to_pad = list(set(ref_names) - set(extra_data["names"]))
+        idx_to_pad = [ref_names.index(name) for name in to_pad]
+        idx_to_pad.sort()
+        for name_idx, idx in enumerate(reversed(idx_to_pad)):
+            extra_data["names"].insert(idx, to_pad[name_idx])
+            for key in ["values", "errors", "impacts"]:
+                extra_data[key].insert(idx, 0.0)
 
-    names2, values2, errors2, impacts2 = tuple(names2), tuple(values2), tuple(errors2), tuple(impacts2)
+    plot_combined(title=title, names=ref_names, all_data=filt_data, max_impact=max_impact, labels=[path.split("/")[0] for path in json_paths])
 
-    info_1 = {"title": title, "names": names, "values": values, "errors": errors, "file": path1, "impacts": impacts}
-    info_2 = {"title": title, "names": names2, "values": values2, "errors": errors2, "file": path2, "impacts": impacts2} if data2 else None
-
-    # plot_postfit(info_1, info_2)
-    # plot_impacts(info_1, info_2)
-    plot_combined(info_1, info_2, max_impact=max_impact)
-
-
+# Merge all generated PDFs into a single file
 subprocess.run(["pdfunite"] + [f"{title}_combined.pdf" for title in plotlist] + ["impacts.pdf"])
 subprocess.run(["rm"] + [f"{title}_combined.pdf" for title in plotlist])
