@@ -60,6 +60,55 @@ def plot_postfit(infos, infos2=None):
     plt.close()
 
 
+import matplotlib.pyplot as plt
+
+
+def plot_combined(infos, infos2=None):
+    title = infos["title"]
+    names = infos["names"]
+    impacts = infos["impacts"]
+    values = infos["values"]
+    errors = infos["errors"]
+    file1 = infos["file"]
+
+    if infos2:
+        impacts2 = infos2["impacts"]
+        values2 = infos2["values"]
+        errors2 = infos2["errors"]
+        file2 = infos2["file"]
+
+    x = range(len(names))
+
+    fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(12, 10), gridspec_kw={"height_ratios": [1, 1]})
+    fig.subplots_adjust(hspace=0.1)
+
+    # --- Plot impacts (top)
+    ax1.plot(x, impacts, "o", markersize=5, linestyle="None", label=file1.split("/")[0])
+    if infos2:
+        ax1.plot(x, impacts2, "s", markersize=5, linestyle="None", label=file2.split("/")[0], color="orange")
+    ax1.axhline(0, color="grey", linestyle="--", linewidth=0.7)
+    ax1.set_ylabel("Impact")
+    ax1.grid(True)
+    ax1.legend()
+    ax1.set_title(title)
+
+    # --- Plot postfit values (bottom)
+    ax2.errorbar(x, values, yerr=errors, fmt="o", markersize=5, linestyle="None", label=file1.split("/")[0])
+    if infos2:
+        x2 = [xi + 0.2 for xi in x]
+        ax2.errorbar(x2, values2, yerr=errors2, fmt="s", markersize=5, linestyle="None", label=file2.split("/")[0], color="orange")
+    ax2.axhline(0, color="grey", linestyle="--", linewidth=0.7)
+    ax2.set_ylabel("Postfit value")
+    ax2.set_xticks(x)
+    ax2.set_xticklabels(names, rotation=45, ha="right")
+    ax2.grid(True)
+    ax2.legend()
+
+    plt.tight_layout()
+    plt.savefig(f"{title}_combined.pdf")
+    plt.close()
+
+
 def filter_data(data, condition):
     filtered = [
         (el["name"].replace(condition + "_", ""), el["fit"][1], abs(el["fit"][1] - el["fit"][0]), el["impact_r"]) for el in data if condition in el["name"]
@@ -143,13 +192,17 @@ for title in plotlist:
     info_1 = {"title": title, "names": names, "values": values, "errors": errors, "file": path1, "impacts": impacts}
     info_2 = {"title": title, "names": names2, "values": values2, "errors": errors2, "file": path2, "impacts": impacts2} if data2 else None
 
-    plot_postfit(info_1, info_2)
-    plot_impacts(info_1, info_2)
+    # plot_postfit(info_1, info_2)
+    # plot_impacts(info_1, info_2)
+    plot_combined(info_1, info_2)
 
 
 # Merge all plots into a single PDF
-subprocess.run(["pdfunite"] + [f"{title}_postfit.pdf" for title in plotlist] + ["postfit_np.pdf"])
-subprocess.run(["rm"] + [f"{title}_postfit.pdf" for title in plotlist])
+# subprocess.run(["pdfunite"] + [f"{title}_postfit.pdf" for title in plotlist] + ["postfit_np.pdf"])
+# subprocess.run(["rm"] + [f"{title}_postfit.pdf" for title in plotlist])
 
-subprocess.run(["pdfunite"] + [f"{title}_impacts.pdf" for title in plotlist] + ["impacts_np.pdf"])
-subprocess.run(["rm"] + [f"{title}_impacts.pdf" for title in plotlist])
+# subprocess.run(["pdfunite"] + [f"{title}_impacts.pdf" for title in plotlist] + ["impacts_np.pdf"])
+# subprocess.run(["rm"] + [f"{title}_impacts.pdf" for title in plotlist])
+
+subprocess.run(["pdfunite"] + [f"{title}_combined.pdf" for title in plotlist] + ["combined.pdf"])
+subprocess.run(["rm"] + [f"{title}_combined.pdf" for title in plotlist])
