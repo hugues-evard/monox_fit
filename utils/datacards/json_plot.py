@@ -5,65 +5,8 @@ import argparse
 import subprocess
 
 
-def plot_impacts(infos, infos2=None):
-    title, names, impacts, file = infos["title"], infos["names"], infos["impacts"], infos["file"]
-    plt.figure(figsize=(12, 6))
-
-    # X positions for the first set
-    x = range(len(impacts))
-    # import pdb
-
-    # pdb.set_trace()
-    plt.plot(x, impacts, "o", markersize=5, linestyle="None", label=file.split("/")[0])
-
-    # Plot second set if provided
-    if infos2:
-        names2, impacts2, file2 = infos2["names"], infos2["impacts"], infos2["file"]
-        # Offset x positions slightly
-        # x2 = [xi + 0.2 for xi in x]
-        plt.plot(x, impacts2, "s", markersize=5, linestyle="None", label=file2.split("/")[0], color="orange")
-
-    plt.axhline(0, color="grey", linestyle="--", linewidth=0.7)
-    plt.xticks(x, names, rotation=45, ha="right")
-    plt.title(title)
-    plt.ylabel("Impacts")
-    plt.grid(True)
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig(f"{title}_impacts.pdf")
-    plt.close()
-
-
-def plot_postfit(infos, infos2=None):
-    title, names, values, errors, file = infos["title"], infos["names"], infos["values"], infos["errors"], infos["file"]
-    plt.figure(figsize=(12, 6))
-
-    # X positions for the first set
-    x = range(len(values))
-    plt.errorbar(x, values, yerr=errors, fmt="o", markersize=5, linestyle="None", label=file.split("/")[0])
-
-    # Plot second set if provided
-    if infos2:
-        names2, values2, errors2, file2 = infos2["names"], infos2["values"], infos2["errors"], infos2["file"]
-        # Offset x positions slightly
-        x2 = [xi + 0.2 for xi in x]
-        plt.errorbar(x2, values2, yerr=errors2, fmt="s", markersize=5, linestyle="None", label=file2.split("/")[0], color="orange")
-
-    plt.axhline(0, color="grey", linestyle="--", linewidth=0.7)
-    plt.xticks(x, names, rotation=45, ha="right")
-    plt.title(title)
-    plt.ylabel("Postfit value")
-    plt.grid(True)
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig(f"{title}_postfit.pdf")
-    plt.close()
-
-
-import matplotlib.pyplot as plt
-
-
-def plot_combined(infos, infos2=None):
+def plot_combined(infos, infos2=None, max_impact=1.0):
+    # Infos from first file
     title = infos["title"]
     names = infos["names"]
     impacts = infos["impacts"]
@@ -71,32 +14,55 @@ def plot_combined(infos, infos2=None):
     errors = infos["errors"]
     file1 = infos["file"]
 
+    # Infos from second file (if available)
     if infos2:
         impacts2 = infos2["impacts"]
         values2 = infos2["values"]
         errors2 = infos2["errors"]
         file2 = infos2["file"]
 
+    # X axis, based on how many data points we have
     x = range(len(names))
 
+    # Create two subplots, one for impacts and one for postfit values
     fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(12, 10), gridspec_kw={"height_ratios": [1, 1]})
     fig.subplots_adjust(hspace=0.1)
 
     # --- Plot impacts (top)
+    impact_ylabel = "Impact"
+    # Normalize impacts if the maximum impact is not 1.0
+    if max_impact != 1.0:
+        # Normalize impacts to the maximum impact value
+        impacts = [100.0 * imp / max_impact for imp in impacts]
+        ax1.set_ylim(-5, 105)
+        ax1.plot([], [], " ", color="k", label=f"Max impact: {max_impact:.3f}")
+        impact_ylabel = "Impact / max impact (%)"
+        if infos2:
+            impacts2 = [100.0 * imp / max_impact for imp in impacts2]
+    # Plot data points for the impacts in the first file
     ax1.plot(x, impacts, "o", markersize=5, linestyle="None", label=file1.split("/")[0])
+
+    # Plot data points for the impacts in the secound file (if available)
     if infos2:
         ax1.plot(x, impacts2, "s", markersize=5, linestyle="None", label=file2.split("/")[0], color="orange")
+
+    # Format plot
     ax1.axhline(0, color="grey", linestyle="--", linewidth=0.7)
-    ax1.set_ylabel("Impact")
+    ax1.set_ylabel(impact_ylabel)
     ax1.grid(True)
     ax1.legend()
     ax1.set_title(title)
 
     # --- Plot postfit values (bottom)
+    # Plot error bars for the postfit values in the first file
     ax2.errorbar(x, values, yerr=errors, fmt="o", markersize=5, linestyle="None", label=file1.split("/")[0])
+    # Plot error bars for the postfit values in the second file (if available)
     if infos2:
+        # Add a small offset to the x values for the second file to avoid overlap
         x2 = [xi + 0.2 for xi in x]
         ax2.errorbar(x2, values2, yerr=errors2, fmt="s", markersize=5, linestyle="None", label=file2.split("/")[0], color="orange")
+
+    # Format plot
     ax2.axhline(0, color="grey", linestyle="--", linewidth=0.7)
     ax2.set_ylabel("Postfit value")
     ax2.set_xticks(x)
@@ -128,6 +94,8 @@ path2 = args.file2 if args.file2 else None
 
 data = json.load(open(path1))["params"]
 data2 = json.load(open(path2))["params"] if path2 else None
+
+max_impact = max(param["impact_r"] for param in data)
 
 plotlist = [
     "CMS",
@@ -194,15 +162,8 @@ for title in plotlist:
 
     # plot_postfit(info_1, info_2)
     # plot_impacts(info_1, info_2)
-    plot_combined(info_1, info_2)
+    plot_combined(info_1, info_2, max_impact=max_impact)
 
 
-# Merge all plots into a single PDF
-# subprocess.run(["pdfunite"] + [f"{title}_postfit.pdf" for title in plotlist] + ["postfit_np.pdf"])
-# subprocess.run(["rm"] + [f"{title}_postfit.pdf" for title in plotlist])
-
-# subprocess.run(["pdfunite"] + [f"{title}_impacts.pdf" for title in plotlist] + ["impacts_np.pdf"])
-# subprocess.run(["rm"] + [f"{title}_impacts.pdf" for title in plotlist])
-
-subprocess.run(["pdfunite"] + [f"{title}_combined.pdf" for title in plotlist] + ["combined.pdf"])
+subprocess.run(["pdfunite"] + [f"{title}_combined.pdf" for title in plotlist] + ["impacts.pdf"])
 subprocess.run(["rm"] + [f"{title}_combined.pdf" for title in plotlist])
