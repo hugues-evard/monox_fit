@@ -5,7 +5,7 @@ import argparse
 import subprocess
 
 
-def plot_combined(title: str, names: list[str], all_data: list[dict], max_impact: float = 1.0, labels=[]) -> None:
+def plot_combined(title: str, names: list[str], all_data: list[dict], max_impacts: float = [], labels=[]) -> None:
 
     impacts = [data["impacts"] for data in all_data]
     values = [data["values"] for data in all_data]
@@ -24,11 +24,11 @@ def plot_combined(title: str, names: list[str], all_data: list[dict], max_impact
     # --- Plot impacts (top)
     impact_ylabel = "Impact"
     # Normalize impacts if the maximum impact is not 1.0
-    if max_impact != 1.0:
+    if max_impacts:
         # Normalize impacts to the maximum impact value
-        impacts = [[100.0 * imp / max_impact for imp in impact_list] for impact_list in impacts]
+        impacts = [[100.0 * imp / max_impacts[idx] for imp in impact_list] for idx, impact_list in enumerate(impacts)]
         ax1.set_ylim(-5, 105)
-        ax1.plot([], [], " ", color="k", label=f"Max impact: {max_impact:.3f}")
+        # ax1.plot([], [], " ", color="k", label=f"Max impact: {max_impact:.3f}")
         impact_ylabel = "Impact / max impact (%)"
 
     # Plot data points for the impacts in the first file
@@ -40,7 +40,7 @@ def plot_combined(title: str, names: list[str], all_data: list[dict], max_impact
             color=colors[idx % len(colors)],
             markersize=5,
             linestyle="None",
-            label=labels[idx] if labels else None,
+            label=(labels[idx] + ", " if labels else "") + (f"max impact: {max_impacts[idx]:.3f}" if max_impacts else ""),
         )
 
     # Format plot
@@ -54,7 +54,9 @@ def plot_combined(title: str, names: list[str], all_data: list[dict], max_impact
     # Plot error bars for the postfit values in the first file
     for idx, (value_list, error_list) in enumerate(zip(values, errors)):
         # list of offset x values for better visibility
-        off_x = [xi + 0.2 * idx for xi in x]
+        # off_x = [xi + 0.2 * idx for xi in x]
+        offset = 0.8 * idx / len(values) if values else 0.0
+        off_x = [xi + offset for xi in x]
 
         ax2.errorbar(
             off_x,
@@ -100,7 +102,20 @@ json_paths = args.files
 
 json_data = [json.load(open(path))["params"] for path in json_paths if path]
 
-max_impact = max(param["impact_r"] for param in json_data[0]) if json_data else 1.0
+max_impacts = [max(param["impact_r"] for param in data) if data else 1.0 for data in json_data]
+# max_impacts = []
+label_map = {
+    "stat_double": "Stat. errors * 0.5",
+    "stat_nominal": "Stat. errors * 1",
+    "stat_half": "Stat. errors * 2",
+    "stat_fifth": "Stat. errors * 5",
+    "stat_tenth": "Stat. errors * 10",
+    "stat_fivefold": "Stat. errors * 0.2",
+    "stat_tenfold": "Stat. errors * 0.1",
+}
+
+
+labels = [label_map[path.split("/")[0]] for path in json_paths]
 
 plotlist = [
     "CMS",
@@ -158,7 +173,7 @@ for title in plotlist:
             for key in ["values", "errors", "impacts"]:
                 extra_data[key].insert(idx, 0.0)
 
-    plot_combined(title=title, names=ref_names, all_data=filt_data, max_impact=max_impact, labels=[path.split("/")[0] for path in json_paths])
+    plot_combined(title=title, names=ref_names, all_data=filt_data, max_impacts=max_impacts, labels=labels)
 
 # Merge all generated PDFs into a single file
 subprocess.run(["pdfunite"] + [f"{title}_combined.pdf" for title in plotlist] + ["impacts.pdf"])
