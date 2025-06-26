@@ -23,41 +23,40 @@ def main() -> None:
         "Run3": 62.5,
     }
 
-    regions = ["singlemuon", "dimuon", "gjets", "singleelectron", "dielectron", "signal"]
+    regions = ["singlemu", "dimuon", "photon", "singleel", "dielec", "signal"]
     procs = ["zmm", "zee", "w", "photon", "wen", "wmn"]
     region_pairs = [
         # Flavor integrated
-        ("combined", "gjets"),
-        ("combinedW", "gjets"),
+        ("combined", "photon"),
+        ("combinedW", "photon"),
         ("combined", "combinedW"),
         # Split by flavor
-        ("dimuon", "singlemuon"),
-        ("dielectron", "singleelectron"),
-        ("singleelectron", "gjets"),
-        ("singlemuon", "gjets"),
-        ("dielectron", "gjets"),
-        ("dimuon", "gjets"),
+        ("dimuon", "singlemu"),
+        ("dielec", "singleel"),
+        ("singleel", "photon"),
+        ("singlemu", "photon"),
+        ("dielec", "photon"),
+        ("dimuon", "photon"),
     ]
 
     year = args.year
     channel = args.channel
     category = f"{channel}_{year}"
     outdir = f"./plots/{year}/"
-    ws_filename = f"./root/ws_{channel}.root"
-    fitdiag_file = f"diagnostics/fitDiagnostics_{category}.root"
+    shapes_filename = f"diagnostics/prefit_postfit_shapes_{category}.root"
     diffnuis_file = f"diagnostics/diffnuisances_{category}.root"
     model_filename = f"root/combined_model_{channel}.root"
 
     common_args = {"category": category, "outdir": outdir, "lumi": lumi[year], "year": year}
 
     for region in regions:
-        plot_prefit_postfit(region=region, ws_filename=ws_filename, fitdiag_file=fitdiag_file, **common_args)
+        plot_prefit_postfit(region=region, shapes_filename=shapes_filename, **common_args)
 
     for proc in procs:
         plot_ratio(process=proc, model_filename=model_filename, **common_args)
 
     for region1, region2 in region_pairs:
-        plot_data_validation(region1=region1, region2=region2, ws_filename=ws_filename, fitdiag_filename=fitdiag_file, **common_args)
+        plot_data_validation(region1=region1, region2=region2, shapes_filename=shapes_filename, **common_args)
 
     plot_diff_nuis(diffnuis_file=diffnuis_file, outdir=outdir, category=category)
 

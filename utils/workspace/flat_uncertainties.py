@@ -1,9 +1,9 @@
 from typing import Any
 
 
-def get_processes(analysis: str) -> dict[str, dict[str, list[str]]]:
-    """Get the regions and their associated processes for a given analysis."""
-    return {
+def get_processes(analysis: str, region: str, type: str) -> list[str]:
+    """Return the list of processes for a given analysis, region, and type."""
+    processes = {
         "vbf": {
             "signal": {
                 "signals": ["zh", "wh", "vbf", "ggh"],
@@ -11,65 +11,29 @@ def get_processes(analysis: str) -> dict[str, dict[str, list[str]]]:
                 "backgrounds": ["qcdzll", "ewkzll", "top", "diboson"],
             },
             "dimuon": {
-                "signals": [],
                 "models": ["qcd_zll", "ewk_zll"],
                 "backgrounds": ["top", "diboson"],
             },
             "dielec": {
-                "signals": [],
                 "models": ["qcd_zll", "ewk_zll"],
                 "backgrounds": ["top", "diboson"],
             },
             "singlemu": {
-                "signals": [],
                 "models": ["qcd_wjets", "ewk_wjets"],
                 "backgrounds": ["qcdzll", "ewkzll", "top", "diboson"],
             },
             "singleel": {
-                "signals": [],
                 "models": ["qcd_wjets", "ewk_wjets"],
-                "backgrounds": ["qcdzll", "ewkzll", "top", "diboson"],
+                "backgrounds": ["qcdzll", "qcdgjets", "ewkzll", "top", "diboson"],
             },
             "photon": {
-                "signals": [],
                 "models": ["qcd_gjets", "ewk_gjets"],
-                "backgrounds": [],
             },
         },
-        "monojet": {
-            # TODO: port propper processes for monojet
-            "signal": {
-                "signals": ["zh", "wh", "vbf", "ggh"],
-                "models": ["qcd_zjets", "ewk_zjets", "qcd_wjets", "ewk_wjets"],
-                "backgrounds": ["qcdzll", "ewkzll", "top", "diboson"],
-            },
-            "dimuon": {
-                "signals": [],
-                "models": ["qcd_zll", "ewk_zll"],
-                "backgrounds": ["top", "diboson"],
-            },
-            "dielec": {
-                "signals": [],
-                "models": ["qcd_zll", "ewk_zll"],
-                "backgrounds": ["top", "diboson"],
-            },
-            "singlemu": {
-                "signals": [],
-                "models": ["qcd_wjets", "ewk_wjets"],
-                "backgrounds": ["qcdzll", "ewkzll", "top", "diboson"],
-            },
-            "singleel": {
-                "signals": [],
-                "models": ["qcd_wjets", "ewk_wjets"],
-                "backgrounds": ["qcdzll", "ewkzll", "top", "diboson"],
-            },
-            "photon": {
-                "signals": [],
-                "models": ["qcd_gjets", "ewk_gjets"],
-                "backgrounds": [],
-            },
-        },
-    }[analysis]
+        # TODO: "monojet": {...}
+    }
+
+    return processes.get(analysis, {}).get(region, {}).get(type, [])
 
 
 def get_region_label_map() -> list[tuple[str, str]]:
@@ -83,23 +47,38 @@ def get_region_label_map() -> list[tuple[str, str]]:
     ]
 
 
-def get_region_model_map() -> dict[str, list[tuple[str, str]]]:
+def get_process_model_map(region: str) -> dict[str, dict[str, str]]:
     return {
-        "dielec": [("ewk_zll", "ewk_dielectron_ewk_zjets"), ("qcd_zll", "qcd_dielectron_qcd_zjets")],
-        "dimuon": [("ewk_zll", "ewk_dimuon_ewk_zjets"), ("qcd_zll", "qcd_dimuon_qcd_zjets")],
-        "signal": [
-            ("ewk_wjets", "ewk_wjetssignal_ewk_zjets"),
-            ("ewk_zjets", "ewkqcd_signal_qcd_zjets"),
-            ("qcd_wjets", "qcd_wjetssignal_qcd_zjets"),
-            ("qcd_zjets", "signal_qcd_zjets"),
-        ],
-        "singleel": [("ewk_wjets", "ewk_singleelectron_ewk_wjets"), ("qcd_wjets", "qcd_singleelectron_qcd_wjets")],
-        "singlemu": [("ewk_wjets", "ewk_singlemuon_ewk_wjets"), ("qcd_wjets", "qcd_singlemuon_qcd_wjets")],
-        "photon": [("ewk_gjets", "ewk_photon_ewk_zjets"), ("qcd_gjets", "qcd_photon_qcd_zjets")],
-    }
+        "dielec": {
+            "ewk_zll": "ewk_dielectron_ewk_zjets",
+            "qcd_zll": "qcd_dielectron_qcd_zjets",
+        },
+        "dimuon": {
+            "ewk_zll": "ewk_dimuon_ewk_zjets",
+            "qcd_zll": "qcd_dimuon_qcd_zjets",
+        },
+        "signal": {
+            "ewk_wjets": "ewk_wjetssignal_ewk_zjets",
+            "ewk_zjets": "ewkqcd_signal_qcd_zjets",
+            "qcd_wjets": "qcd_wjetssignal_qcd_zjets",
+            "qcd_zjets": "signal_qcd_zjets",
+        },
+        "singleel": {
+            "ewk_wjets": "ewk_singleelectron_ewk_wjets",
+            "qcd_wjets": "qcd_singleelectron_qcd_wjets",
+        },
+        "singlemu": {
+            "ewk_wjets": "ewk_singlemuon_ewk_wjets",
+            "qcd_wjets": "qcd_singlemuon_qcd_wjets",
+        },
+        "photon": {
+            "ewk_gjets": "ewk_photon_ewk_zjets",
+            "qcd_gjets": "qcd_photon_qcd_zjets",
+        },
+    }[region]
 
 
-def get_flat_uncertainties(process: str) -> dict[str, float]:
+def get_flat_unc(process: str) -> dict[str, float]:
     return {
         "zmm": {"pu": 0.01, "id": 0.01, "trigger": 0.01},
         "zee": {"pu": 0.01, "id": 0.03, "trigger": 0.005},
@@ -110,7 +89,7 @@ def get_flat_uncertainties(process: str) -> dict[str, float]:
     }[process]
 
 
-def get_veto_uncertainties(model: str) -> dict[str, float]:
+def get_veto_unc(model: str) -> dict[str, float]:
     # TODO split or with the same name?
     return {
         # VBF
@@ -124,130 +103,120 @@ def get_veto_uncertainties(model: str) -> dict[str, float]:
     }[model]
 
 
-def get_lumi_uncertainties(year: str) -> dict[str, str]:
-    # All processes (signal + backgrounds), except models
-    proc_list = ["zh", "wh", "vbf", "ggh", "diboson", "top", "qcdzll", "ewkzll"]
+def get_processes_by_type(analysis: str, types: list[str] = ["signals", "backgrounds"]) -> set[str]:
+    """Return the set of all processes of the given types used in all regions of the given analysis."""
+    regions = [region for region, _ in get_region_label_map()]
+    return {proc for region in regions for category in types for proc in get_processes(analysis=analysis, region=region, type=category)}
 
+
+def get_processes_by_region(analysis: str, region: str, types: list[str] = ["backgrounds", "models"]) -> set[str]:
+    """Return the set of all processes of the given types used in all regions of the given analysis."""
+    return {proc for category in types for proc in get_processes(analysis=analysis, region=region, type=category)}
+
+
+def get_lumi_unc(year: str, analysis: str) -> dict[str, Any]:
+    """Return luminosity lnN systematics for a given year and analysis."""
+    _ = analysis  # Currently unused
+
+    proc_list = get_processes_by_type(analysis=analysis)
     return {
-        "2017": {
-            "lumi_13TeV_XY": 1.008,
-            "lumi_13TeV_LS": 1.003,
-            "lumi_13TeV_BBD": 1.004,
-            "lumi_13TeV_DB": 1.005,
-            "lumi_13TeV_BCC": 1.003,
-            "lumi_13TeV_GS": 1.001,
-            "lumi_13TeV_$ERA": 1.020,
-        },
-        "2018": {
-            "lumi_13TeV_XY": 1.02,
-            "lumi_13TeV_LS": 1.002,
-            "lumi_13TeV_BBD": 1.0,
-            "lumi_13TeV_DB": 1.0,
-            "lumi_13TeV_BCC": 1.02,
-            "lumi_13TeV_GS": 1.00,
-            "lumi_13TeV_$ERA": 1.015,
-        },
         "Run3": {
-            "lumi_13TeV_XY": {"value": 1.02, "processes": proc_list},
-            "lumi_13TeV_LS": {"value": 1.002, "processes": proc_list},
-            "lumi_13TeV_BBD": {"value": 1.0, "processes": proc_list},
-            "lumi_13TeV_DB": {"value": 1.0, "processes": proc_list},
-            "lumi_13TeV_BCC": {"value": 1.02, "processes": proc_list},
-            "lumi_13TeV_GS": {"value": 1.00, "processes": proc_list},
-            "lumi_13TeV_$ERA": {"value": 1.015, "processes": proc_list},
+            f"lumi_13p6TeV_{year}": {"value": 1.014, "processes": proc_list},
         },
     }[year]
 
 
-def get_lepton_efficiency_uncertainties(year: str) -> dict[str, Any]:
-    return {
-        "Run3": {
-            "CMS_eff$ERA_b": {"value": 1.03, "processes": ["top"]},
-            "CMS_fake$ERA_b": {"value": 1.01, "processes": ["zh", "wh", "vbf", "ggh", "diboson", "qcdzll", "ewkzll"]},
-            "CMS_eff$ERA_e": {
-                "dielec": {"value": 1.06, "processes": ["diboson", "top", "qcd_zll", "ewk_zll"]},
-                "singleel": {
-                    "value": 1.03,
-                    # TODO: check, qcd_wjets was not present in Run2
-                    "processes": ["diboson", "top", "qcdzll", "ewkzll", "ewk_wjets"],
-                },
-            },
-            "CMS_reco$ERA_e": {
-                "dielec": {"value": 1.02, "processes": ["diboson", "top", "qcd_zll", "ewk_zll"]},
-                "singleel": {"value": 1.01, "processes": ["diboson", "top", "qcdzll", "ewkzll"]},
-            },
-            "CMS_eff$ERA_m": {
-                "dimuon": {"value": 1.01, "processes": ["diboson", "top", "qcd_zll", "ewk_zll"]},
-                "singlemu": {"value": 1.005, "processes": ["diboson", "top", "qcdzll", "ewkzll", "ewk_wjets", "qcd_wjets"]},
-            },
-            "CMS_eff$ERA_g": {"value": 1.05, "processes": ["qcd_gjets", "ewk_gjets"]},
-        },
-    }[year]
+def get_lepton_eff_unc(year: str, analysis: str) -> dict[str, Any]:
+    """Return lepton and photon efficiency lnN systematics for a given year and analysis."""
+    _ = analysis  # Currently unused
+    procs_by_region = {
+        "dielec": get_processes_by_region(analysis=analysis, region="dielec"),
+        "singleel": get_processes_by_region(analysis=analysis, region="singleel"),
+        "dimuon": get_processes_by_region(analysis=analysis, region="dimuon"),
+        "singlemu": get_processes_by_region(analysis=analysis, region="singlemu"),
+        "photon": get_processes_by_region(analysis=analysis, region="photon"),
+        "signal": get_processes_by_type(analysis=analysis),
+    }
+
+    # Run-dependent efficiencies
+    m_id_eff = {"Run3": 0.004}[year]
+    m_iso_eff = {"Run3": 0.005}[year]
+    e_id_eff = {"Run3": 0.014}[year]
+    e_reco_eff = {"Run3": 0.010}[year]  # TODO update for run3
+    g_id_eff = {"Run3": 0.014}[year]
+    results = {
+        f"CMS_eff_b_{year}": {"value": 1.03, "processes": ["top"]},
+        f"CMS_fake_b_{year}": {"value": 1.01, "processes": procs_by_region["signal"] - {"top"}},
+    }
+    lepton_unc = {
+        f"CMS_eff_e_id_{year}": {"dielec": 2 * e_id_eff, "singleel": e_id_eff},
+        f"CMS_eff_e_reco_{year}": {"dielec": 2 * e_reco_eff, "singleel": e_reco_eff},
+        f"CMS_eff_m_id_{year}": {"dimuon": 2 * m_id_eff, "singlemu": m_id_eff},
+        f"CMS_eff_m_iso_{year}": {"dimuon": 2 * m_iso_eff, "singlemu": m_iso_eff},
+        f"CMS_eff_g_id_{year}": {"photon": g_id_eff},
+    }
+
+    for name, entries in lepton_unc.items():
+        results[name] = {region: {"value": 1 + value, "processes": procs_by_region[region]} for region, value in entries.items()}
+
+    return results
 
 
-def get_trigger_uncertainties(year: str) -> dict[str, str]:
+def get_trigger_unc(year: str, analysis: str) -> dict[str, Any]:
+    """Return trigger-related lnN systematics for a given year and analysis."""
+    _ = analysis  # Currently unused
     # All processes
-    proc_list = [
-        "zh",
-        "wh",
-        "vbf",
-        "ggh",
-        "diboson",
-        "top",
-        "qcdzll",
-        "ewkzll",
-        "ewk_wjets",
-        "qcd_wjets",
-        "ewk_zjets",
-        "qcd_zjets",
-        "qcd_zll",
-        "ewk_zll",
-        "ewk_gjets",
-        "qcd_gjets",
-    ]
+    proc_list = get_processes_by_type(analysis=analysis, types=["signals", "backgrounds", "models"])
     return {
         "Run3": {
-            "CMS_trigger$ERA_g": {"photon": {"value": 1.01, "processes": proc_list}},
-            "CMS_trigger$ERA_e": {"dielec": {"value": 1.01, "processes": proc_list}, "singleel": {"value": 1.01, "processes": proc_list}},
-            "CMS_trigger$ERA_met_stat": {
+            f"CMS_eff_g_trigger_{year}_13p6TeV": {
+                "photon": {"value": 1.01, "processes": proc_list},
+            },
+            f"CMS_eff_e_trigger_{year}_13p6TeV": {
+                "dielec": {"value": 1.01, "processes": proc_list},
+                "singleel": {"value": 1.01, "processes": proc_list},
+            },
+            f"CMS_eff_met_trigger_{year}_13p6TeV": {
                 "signal": {"value": 1.02, "processes": proc_list},
                 "dimuon": {"value": 1.02, "processes": proc_list},
                 "singlemu": {"value": 1.02, "processes": proc_list},
             },
-            "CMS_trigger_met_sys": {
-                "signal": {"value": 1.01, "processes": proc_list},
-                "dimuon": {"value": 0.99, "processes": proc_list},
-            },
         },
     }[year]
 
 
-def get_qcd_uncertainties(year: str) -> dict[str, str]:
+def get_qcd_unc(year: str, analysis: str) -> dict[str, Any]:
+    """Return QCD scale lnN systematics for a given year and analysis."""
+    _ = analysis  # Currently unused
     return {
         "Run3": {
             "QCDscale_VV": {"value": 1.15, "processes": ["diboson"]},
             "QCDscale_VV_ACCEPT": {"value": 1.15, "processes": ["diboson"]},
-            "QCDscale_tt": {"value": 1.1, "processes": ["top"]},
-            "QCDscale_tt_ACCEPT": {"value": 1.1, "processes": ["top"]},
-            "QCDscale_ggH2in": {"value": 1.4, "processes": ["ggh"]},
+            "QCDscale_ttbar": {"value": 1.1, "processes": ["top"]},
+            "QCDscale_ttbar_ACCEPT": {"value": 1.1, "processes": ["top"]},
+            "QCDscale_ggH2in": {"value": (0.933, 1.046), "processes": ["ggh"]},
+            "QCDscale_ggH2in_ACCEPT": {"value": 1.4, "processes": ["ggh"]},
+            "QCDscale_qqH": {"value": (0.997, 1.004), "processes": ["vbf"]},
             "QCDscale_qqH_ACCEPT": {"value": 1.02, "processes": ["vbf"]},
         },
     }[year]
 
 
-def get_pdf_uncertainties(year: str) -> dict[str, str]:
+def get_pdf_unc(year: str, analysis: str) -> dict[str, Any]:
+    """Return PDF systematics for a given year and analysis."""
+    _ = analysis  # Currently unused
     return {
         "Run3": {
             "pdf_Higgs_gg": {"value": 1.032, "processes": ["ggh"]},
             "pdf_Higgs_qq": {"value": 1.021, "processes": ["vbf"]},
             "pdf_Higgs_qq_ACCEPT": {"value": 1.01, "processes": ["vbf"]},
-            "qqH_QCDscale": {"value": (0.997, 1.004), "processes": ["vbf"]},
-            "ggH_QCDscale": {"value": (0.933, 1.046), "processes": ["ggh"]},
         },
     }[year]
 
 
-def get_misc_uncertainties(year: str) -> dict[str, str]:
+def get_misc_unc(year: str, analysis: str) -> dict[str, Any]:
+    """Return miscellaneous lnN systematics for a given year and analysis."""
+    _ = analysis  # Currently unused
     return {
         "Run3": {
             "Top_Reweight13TeV": {"value": 1.1, "processes": ["top"]},
@@ -257,21 +226,24 @@ def get_misc_uncertainties(year: str) -> dict[str, str]:
     }[year]
 
 
-def get_jer_shape():
+def get_jec_shape(year: str, analysis: str) -> dict[str, dict[str, Any]]:
+    """Return JER and JES shape systematics for a given year and analysis."""
+    _ = year  # Currently unused
+    _ = analysis  # Currently unused
 
-    # All processes (signal + backgrounds), except models
-    proc_list = ["zh", "wh", "vbf", "ggh", "diboson", "top", "qcdzll", "ewkzll"]
+    proc_list = get_processes_by_type(analysis=analysis)
+    # TODO need to change to CMS_scale_j_Absolute
     return {
-        "jer_$ERA": {"value": 1.0, "processes": proc_list},
+        f"jer_{year}": {"value": 1.0, "processes": proc_list},
         "jesAbsolute": {"value": 1.0, "processes": proc_list},
-        "jesAbsolute_$ERA": {"value": 1.0, "processes": proc_list},
+        f"jesAbsolute_{year}": {"value": 1.0, "processes": proc_list},
         "jesBBEC1": {"value": 1.0, "processes": proc_list},
-        "jesBBEC1_$ERA": {"value": 1.0, "processes": proc_list},
+        f"jesBBEC1_{year}": {"value": 1.0, "processes": proc_list},
         "jesEC2": {"value": 1.0, "processes": proc_list},
-        "jesEC2_$ERA": {"value": 1.0, "processes": proc_list},
+        f"jesEC2_{year}": {"value": 1.0, "processes": proc_list},
         "jesFlavorQCD": {"value": 1.0, "processes": proc_list},
         "jesHF": {"value": 1.0, "processes": proc_list},
-        "jesHF_$ERA": {"value": 1.0, "processes": proc_list},
+        f"jesHF_{year}": {"value": 1.0, "processes": proc_list},
         "jesRelativeBal": {"value": 1.0, "processes": proc_list},
-        "jesRelativeSample_$ERA": {"value": 1.0, "processes": proc_list},
+        f"jesRelativeSample_{year}": {"value": 1.0, "processes": proc_list},
     }

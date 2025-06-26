@@ -3,7 +3,7 @@ import ROOT as rt  # type: ignore
 from collections import defaultdict
 import plotter.cmsstyle as CMS
 from utils.generic.general import oplus
-from utils.workspace.flat_uncertainties import get_flat_uncertainties
+from utils.workspace.flat_uncertainties import get_flat_unc
 from utils.generic.logger import initialize_colorized_logger
 
 logger = initialize_colorized_logger(log_level="INFO")
@@ -30,7 +30,7 @@ def plot_ratio(process: str, category: str, model_filename: str, outdir: str, lu
         "wmn": {"model": "w", "label": "W(#mu#nu)"},
     }
     config = process_config[process]
-    flat_uncertainties = list(get_flat_uncertainties(process=process).values())
+    flat_uncertainties = list(get_flat_unc(process=process).values())
 
     for mode in production_modes:
         # TODO: fix these names for monojet

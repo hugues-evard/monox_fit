@@ -1,4 +1,5 @@
 #!/bin/bash
+source "$(dirname "$0")/colors.sh"
 
 # Limit script
 
@@ -20,7 +21,7 @@ for YEAR in "${YEARS[@]}"; do
     LOGFILE="log_limit_${YEAR}.txt"
     METHOD="-M AsymptoticLimits -t -1"
 
-    echo "Running AsymptoticLimits for ${TAG}"
+    cecho blue "Running AsymptoticLimits for ${TAG}"
     combine ${METHOD} ${CARD} -n "_${TAG}" "${EXTRA_OPTS[@]}" | tee ${LOGFILE}
 done
 

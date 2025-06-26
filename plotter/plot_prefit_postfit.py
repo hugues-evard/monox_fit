@@ -12,13 +12,16 @@ def create_ratios(h_data: rt.TH1, h_all_prefit: rt.TH1, h_all_postfit: rt.TH1) -
     xval, xerr = [], []
     ratio_pre, ratio_pre_hi, ratio_pre_lo = [], [], []
     ratio_post, ratio_post_hi, ratio_post_lo = [], [], []
-    ratiosys = h_all_postfit.Clone()
+    ratiosys_pre = h_all_prefit.Clone()
+    ratiosys_post = h_all_postfit.Clone()
     for idx in range(1, h_all_prefit.GetNbinsX() + 1):
         yield_data = h_data.GetBinContent(idx)
         yield_pre = h_all_prefit.GetBinContent(idx)
         yield_post = h_all_postfit.GetBinContent(idx)
+        prefit_error = h_all_prefit.GetBinError(idx)
         postfit_error = h_all_postfit.GetBinError(idx)
-        ratiosys.SetBinContent(idx, 1.0)
+        ratiosys_pre.SetBinContent(idx, 1.0)
+        ratiosys_post.SetBinContent(idx, 1.0)
         xval.append(h_all_prefit.GetBinCenter(idx))
         xerr.append(h_all_prefit.GetBinWidth(idx) / 2)
 
@@ -48,12 +51,16 @@ def create_ratios(h_data: rt.TH1, h_all_prefit: rt.TH1, h_all_postfit: rt.TH1) -
             ratio_post.append(yield_data / yield_post)
             ratio_post_hi.append(e_data_hi / yield_post)
             ratio_post_lo.append(e_data_lo / yield_post)
-            ratiosys.SetBinError(idx, postfit_error / yield_post)
+            ratiosys_pre.SetBinError(idx, prefit_error / yield_pre)
+            ratiosys_post.SetBinError(idx, postfit_error / yield_post)
+            if prefit_error / yield_pre < postfit_error / yield_post:
+                logger.warning(f"Larger post-fit error for bin={idx}")
         else:
             ratio_post.append(0.0)
             ratio_post_hi.append(0.0)
             ratio_post_lo.append(0.0)
-            ratiosys.SetBinError(idx, 0.0)
+            ratiosys_pre.SetBinError(idx, 0.0)
+            ratiosys_post.SetBinError(idx, 0.0)
             logger.warning("Empty post-fit MC bin. Is this intendend?")
 
     xval = array("d", xval)
@@ -61,49 +68,28 @@ def create_ratios(h_data: rt.TH1, h_all_prefit: rt.TH1, h_all_postfit: rt.TH1) -
 
     g_ratio_pre = rt.TGraphAsymmErrors(len(xval), xval, array("d", ratio_pre), xerr, xerr, array("d", ratio_pre_lo), array("d", ratio_pre_hi))
     g_ratio_post = rt.TGraphAsymmErrors(len(xval), xval, array("d", ratio_post), xerr, xerr, array("d", ratio_post_lo), array("d", ratio_post_hi))
-    return g_ratio_pre, g_ratio_post, ratiosys
+    return g_ratio_pre, g_ratio_post, ratiosys_pre, ratiosys_post
 
 
-def plot_prefit_postfit(region: str, category: str, ws_filename: str, fitdiag_file: str, outdir: str, lumi: str, year: str, sb: bool = False) -> None:
+def plot_prefit_postfit(region: str, category: str, shapes_filename: str, outdir: str, lumi: str, year: str, sb: bool = False) -> None:
     logger.debug(f"Input parameters: {locals()}")
 
     os.makedirs(outdir, exist_ok=True)
 
+    f_shapes = rt.TFile(shapes_filename, "READ")
+
     is_SR = "signal" in region
-
-    datalab = {
-        "singlemuon": "Wmn",
-        "dimuon": "Zmm",
-        "gjets": "gjets",
-        "signal": "signal",
-        "singleelectron": "Wen",
-        "dielectron": "Zee",
-    }
-
-    channel = {
-        "singlemuon": f"{category}_singlemu",
-        "dimuon": f"{category}_dimuon",
-        "gjets": f"{category}_photon",
-        "signal": f"{category}_signal",
-        "singleelectron": f"{category}_singleel",
-        "dielectron": f"{category}_dielec",
-    }[region]
-
-    f_mlfit = rt.TFile(fitdiag_file, "READ")
-    f_data = rt.TFile(ws_filename, "READ")
-
-    # using this instead of the graph from shapes_fit_b to avoid conversion
-    h_data = f_data.Get(f"category_{category}/{datalab[region]}_data")
+    channel = f"{category}_{region}"
 
     is_mono = "mono" in category
 
     if is_mono:
         mainbkgs = {
-            "singlemuon": ["qcd_wjets"],
-            "singleelectron": ["qcd_wjets"],
+            "singlemu": ["qcd_wjets"],
+            "singleel": ["qcd_wjets"],
             "dimuon": ["qcd_zll"],
-            "dielectron": ["qcd_zll"],
-            "gjets": ["qcd_gjets"],
+            "dielec": ["qcd_zll"],
+            "photon": ["qcd_gjets"],
             "signal": ["qcd_zjets", "qcd_wjets"],
         }
         processes = [
@@ -128,11 +114,11 @@ def plot_prefit_postfit(region: str, category: str, ws_filename: str, fitdiag_fi
         ]
     else:
         mainbkgs = {
-            "singlemuon": ["qcd_wjets", "ewk_wjets"],
-            "singleelectron": ["qcd_wjets", "ewk_wjets"],
+            "singlemu": ["qcd_wjets", "ewk_wjets"],
+            "singleel": ["qcd_wjets", "ewk_wjets"],
             "dimuon": ["qcd_zll", "ewk_zll"],
-            "dielectron": ["qcd_zll", "ewk_zll"],
-            "gjets": ["qcd_gjets", "ewk_gjets"],
+            "dielec": ["qcd_zll", "ewk_zll"],
+            "photon": ["qcd_gjets", "ewk_gjets"],
             "signal": ["qcd_zjets", "ewk_zjets"],
         }
         processes = [
@@ -180,40 +166,45 @@ def plot_prefit_postfit(region: str, category: str, ws_filename: str, fitdiag_fi
     binLowE = []
 
     # Pre/Post Fit
-    prefit_dir = "shapes_prefit"
-    postfit_dir = "shapes_fit_b"
+    prefit_dir = f"{channel}_prefit/"
+    postfit_dir = f"{channel}_postfit/"
+
+    h_data = f_shapes.Get(f"{prefit_dir}/data_obs").Clone("data_obs")
+
     h_prefit = {}
     h_postfit = {}
-    h_all_prefit = f_mlfit.Get(f"{prefit_dir}/{channel}/total_background").Clone("h_all_prefit")
-    h_all_postfit = f_mlfit.Get(f"{postfit_dir}/{channel}/total_background").Clone("h_all_postfit")
-    h_postfit_total_sig_bkg = f_mlfit.Get(f"{postfit_dir}/{channel}/total").Clone("h_postfit_total_sig_bkg")
+    h_all_prefit = f_shapes.Get(f"{prefit_dir}/TotalBkg").Clone("h_all_prefit")
+    h_all_postfit = f_shapes.Get(f"{postfit_dir}/TotalBkg").Clone("h_all_postfit")
+    h_postfit_total_sig_bkg = f_shapes.Get(f"{postfit_dir}/TotalProcs").Clone("h_postfit_total_sig_bkg")
+
+    h_data.Scale(1, "width")
+    h_all_prefit.Scale(1, "width")
+    h_all_postfit.Scale(1, "width")
+    h_postfit_total_sig_bkg.Scale(1, "width")
 
     h_other_prefit = None
     h_other_postfit = None
-    h_prefit["total"] = f_mlfit.Get(f"{prefit_dir}/{channel}/total").Clone("h_prefit_total")
+    h_prefit["total"] = f_shapes.Get(f"{prefit_dir}/TotalProcs").Clone("h_prefit_total")
     for i in range(1, h_prefit["total"].GetNbinsX() + 2):
         binLowE.append(h_prefit["total"].GetBinLowEdge(i))
 
     h_stack_postfit = rt.THStack("h_stack_postfit", "h_stack_postfit")
 
     for process in processes:
-        h_prefit[process] = f_mlfit.Get(f"{prefit_dir}/{channel}/{process}")
+        h_prefit[process] = f_shapes.Get(f"{prefit_dir}/{process}")
         if not h_prefit[process]:
             continue
         h_prefit[process] = h_prefit[process].Clone(f"h_prefit_{process}")
-        h_postfit[process] = f_mlfit.Get(f"{postfit_dir}/{channel}/{process}")
-        h_postfit[process] = h_postfit[process].Clone(f"h_postfit_{process}")
+        h_postfit[process] = f_shapes.Get(f"{postfit_dir}/{process}")
         if not h_postfit[process]:
             continue
+        h_postfit[process] = h_postfit[process].Clone(f"h_postfit_{process}")
         if str(h_prefit[process].Integral()) == "nan" or str(h_postfit[process].Integral()) == "nan":
             logger.critical(f"Found process with integral==Nan: {process}", exception_cls=RuntimeError)
         h_prefit[process].SetDirectory(0)
-        for i in range(1, h_prefit[process].GetNbinsX() + 1):
-            width = h_prefit[process].GetBinWidth(i)
-            h_prefit[process].SetBinContent(i, h_prefit[process].GetBinContent(i) * width)
-            h_prefit[process].SetBinError(i, h_prefit[process].GetBinError(i) * width)
-            h_postfit[process].SetBinContent(i, h_postfit[process].GetBinContent(i) * width)
-            h_postfit[process].SetBinError(i, h_postfit[process].GetBinError(i) * width)
+        h_postfit[process].SetDirectory(0)
+        h_prefit[process].Scale(1, "width")
+        h_postfit[process].Scale(1, "width")
         color = rt.TColor.GetColor(colors[process])
         h_prefit[process].SetLineColor(color)
         h_prefit[process].SetFillColor(color)
@@ -230,7 +221,6 @@ def plot_prefit_postfit(region: str, category: str, ws_filename: str, fitdiag_fi
 
         h_postfit[process].SetLineColor(1)
         h_postfit[process].SetFillColor(color)
-        h_postfit[process].Scale(1, "width")
 
         if is_SR:
             h_stack_postfit.Add(h_postfit[process])
@@ -271,8 +261,6 @@ def plot_prefit_postfit(region: str, category: str, ws_filename: str, fitdiag_fi
     canv.cd(1).SetLogy(True)
     canv.cd(1)
 
-    h_other_prefit.Scale(1, "width")
-
     if is_SR:
         if sb:
             CMS.cmsDraw(h_postfit_total_sig_bkg, "hist", lcolor=1, fcolor=1, fstyle=3144)
@@ -283,18 +271,17 @@ def plot_prefit_postfit(region: str, category: str, ws_filename: str, fitdiag_fi
         CMS.cmsDraw(h_all_prefit, "hist", lwidth=2, lcolor=colors["prefit"], fstyle=0)
         CMS.cmsDraw(h_all_postfit, "hist", lwidth=2, lcolor=colors["postfit"], fstyle=0)
 
-    h_data.Scale(1, "width")
     CMS.cmsDraw(h_data, "ep", marker=20, msize=1.2, lcolor=1)
 
-    if region == "singlemuon":
+    if region == "singlemu":
         legname = "W #rightarrow #mu#nu"
     if region == "dimuon":
         legname = "Z #rightarrow #mu#mu"
-    if region == "gjets":
+    if region == "photon":
         legname = "#gamma + jets"
-    if region == "singleelectron":
+    if region == "singleel":
         legname = "W #rightarrow e#nu"
-    if region == "dielectron":
+    if region == "dielec":
         legname = "Z #rightarrow ee"
 
     n_leg_entries = (len(h_postfit) + 1) if is_SR else 6
@@ -321,21 +308,24 @@ def plot_prefit_postfit(region: str, category: str, ws_filename: str, fitdiag_fi
         legend.AddEntry(h_all_prefit, f"Pre-fit ({legname})", "l")
         legend.AddEntry(h_other_prefit, "Other backgrounds", "f")
 
-    g_ratio_pre, g_ratio_post, ratiosys = create_ratios(h_data=h_data, h_all_prefit=h_all_prefit, h_all_postfit=h_all_postfit)
+    g_ratio_pre, g_ratio_post, ratiosys_pre, ratiosys_post = create_ratios(h_data=h_data, h_all_prefit=h_all_prefit, h_all_postfit=h_all_postfit)
 
     canv.cd(2)
 
     ref_line = rt.TLine(x_min, 1, x_max, 1)
 
-    CMS.cmsDraw(ratiosys, "e2", msize=0, lwidth=1, lcolor=rt.kGray, fcolor=rt.kGray)
+    CMS.cmsDraw(ratiosys_pre, "e2", msize=0, lwidth=1, lcolor=rt.kGray + 2, fcolor=rt.kGray + 2)
+    CMS.cmsDraw(ratiosys_post, "e2", msize=0, lwidth=1, lcolor=rt.kGray, fcolor=rt.kGray)
     CMS.cmsDrawLine(line=ref_line, lcolor=rt.kBlack, lstyle=rt.kDashed, lwidth=2)
     CMS.cmsDraw(g_ratio_pre, "ep", marker=20, msize=1.2, mcolor=colors["prefit"], lcolor=colors["prefit"])
     CMS.cmsDraw(g_ratio_post, "ep", marker=20, msize=1.2, mcolor=colors["postfit"], lcolor=colors["postfit"])
 
-    legend_ratio = CMS.cmsLeg(x1=0.18, y1=0.70, x2=0.50, y2=0.92, textSize=0.14)
+    legend_ratio = CMS.cmsLeg(x1=0.18, y1=0.70, x2=0.89, y2=0.92, textSize=0.14)
+    legend_ratio.SetNColumns(4)
     legend_ratio.AddEntry(g_ratio_pre, "Pre-fit", "ple")
     legend_ratio.AddEntry(g_ratio_post, "Post-fit", "ple")
-    legend_ratio.SetNColumns(2)
+    legend_ratio.AddEntry(ratiosys_pre, "Pre-fit unc.", "f")
+    legend_ratio.AddEntry(ratiosys_post, "Post-fit unc.", "f")
     legend_ratio.Draw("same")
 
     canv.cd(3)
@@ -350,15 +340,23 @@ def plot_prefit_postfit(region: str, category: str, ws_filename: str, fitdiag_fi
         # sigma_data = sqrt(mc_pred) -> Poisson statistical error estimated from the MC prediction
         # sigma_fit = mc_err -> mc postfit error
         # sigma = sqrt(mc_pred-mc_err^2)
+        center = hist_2.GetBinCenter(hbin)
         width = hist_1.GetBinWidth(hbin)
         data_pred = width * hist_1.GetBinContent(hbin)
         mc_pred = width * hist_2.GetBinContent(hbin)
         postfit_err = width * hist_2.GetBinError(hbin)
         sigma = mc_pred - postfit_err**2
         if sigma < 0:
-            logger.warning(f"Bin {hbin} at x={hist_2.GetBinCenter(hbin)} with too large post fit errors.")
+            # TODO
+            logger.warning(
+                f"Bin {hbin} at x={center} with too large post fit errors. err_data ={math.sqrt(data_pred)}, sigma_data ={math.sqrt(mc_pred)}, sigma_fit={postfit_err}."
+            )
             sigma = mc_pred + postfit_err**2
         pull = (data_pred - mc_pred) / math.sqrt(sigma)
+        # TODO
+        logger.info(
+            f"Bin {hbin} at x={center} with pull={pull}, sigma={math.sqrt(sigma)}, sigma_data ={math.sqrt(mc_pred)}, sigma_fit={postfit_err}, diff={data_pred - mc_pred}, data_pred={data_pred}, mc_pred={mc_pred}."
+        )
         return pull
 
     for hbin in range(1, data_pull.GetNbinsX() + 1):
@@ -387,5 +385,4 @@ def plot_prefit_postfit(region: str, category: str, ws_filename: str, fitdiag_fi
         canv.SaveAs(f"{outdir}/prefit_postfit_{category}_{region}_{year}.{extension}")
 
     canv.Close()
-    f_mlfit.Close()
-    f_data.Close()
+    f_shapes.Close()

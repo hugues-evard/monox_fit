@@ -28,8 +28,9 @@ printcommand-%:
 diag: diagnostics
 printcommand-diag: printcommand-diagnostics
 
-# cards:
+# Create datacards
 cards:
+	@echo "Generating cards for channel=$(CHANNEL) year=$(YEAR)"
 	python3 $(SCRIPTDIR)/build_cards.py --channel $(CHANNEL) --year $(YEAR)
 
 # Plotting

@@ -3,7 +3,7 @@ from typing import Any
 from counting_experiment import Category, Channel
 from utils.generic.logger import initialize_colorized_logger
 from utils.workspace.jes_utils import get_jes_variations_names, get_jes_file
-from utils.workspace.flat_uncertainties import get_veto_uncertainties
+from utils.workspace.flat_uncertainties import get_veto_unc
 
 logger = initialize_colorized_logger(log_level="INFO")
 
@@ -231,8 +231,7 @@ def add_veto_nuisances(channel_objects: dict[str, Channel], channel_list: list[s
         channel_list (list[str]): List of control regions to apply veto uncertainties.
         veto_dict (dict[str, float]): Dictionnary mapping the name of the nuissance to add and its value.
     """
-
-    veto_dict = {f"CMS_veto{year}_{key}": value for key, value in get_veto_uncertainties(model=model_name).items()}
+    veto_dict = {f"CMS_veto_{key}_{year}": value for key, value in get_veto_unc(model=model_name).items()}
     for channel in channel_list:
         for veto_name, veto_value in veto_dict.items():
             channel_objects[channel].add_nuisance(veto_name, veto_value)

@@ -1,4 +1,5 @@
 #!/bin/bash
+source "$(dirname "$0")/colors.sh"
 
 # Fit diagnostics script
 
@@ -16,16 +17,21 @@ EXTRA_OPTS+=(--cminDefaultMinimizerStrategy 0)
 
 for YEAR in "${YEARS[@]}"; do
     TAG="${CHANNEL}_${YEAR}"
-    CARD="../cards/card_${TAG}.root"
+    CARD="../cards/card_${TAG}.txt"
+    WS="../cards/card_${TAG}.root"
     LOGFILE="log_diag_${YEAR}.txt"
     FITDIAGFILE="fitDiagnostics_${TAG}.root"
+    SHAPESFILE="prefit_postfit_shapes_${TAG}.root"
     DIFFROOT="diffnuisances_${TAG}.root"
-    METHOD="-M FitDiagnostics"
 
-    echo "Running FitDiagnostics for ${TAG}"
-    combine ${METHOD} ${CARD} -n "_${TAG}" "${EXTRA_OPTS[@]}" | tee ${LOGFILE}
+    cecho blue ">> Running FitDiagnostics for ${TAG}"
+    combine -M FitDiagnostics ${WS} -n "_${TAG}" "${EXTRA_OPTS[@]}" | tee ${LOGFILE}
 
-    echo "Running diffNuisances for ${FITDIAGFILE}"
+    cecho blue ">> Extracting postfit shapes for ${TAG}"
+    PostFitShapesFromWorkspace --workspace ${WS} --datacard ${CARD} --output ${SHAPESFILE} \
+        --fitresult "${FITDIAGFILE}:fit_b" --postfit --covariance --print
+    
+    cecho blue ">> Running diffNuisances for ${FITDIAGFILE}"
     python3 "${CMSSW_BASE}/src/HiggsAnalysis/CombinedLimit/test/diffNuisances.py" ${FITDIAGFILE} -g ${DIFFROOT} --all
 done
 
