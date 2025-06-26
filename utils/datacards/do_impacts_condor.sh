@@ -5,7 +5,7 @@
 CHANNEL="$1"
 YEARS=("Run3")
 
-mkdir -p impact
+mkdir -p impacts
 pushd impacts > /dev/null
 
 # Uncomment the options you want to use
