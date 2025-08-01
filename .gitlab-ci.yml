@@ -1,5 +1,8 @@
 # image: gitlab-registry.cern.ch/cms-cloud/cmssw-docker/al9-cms
-image: registry.cern.ch/docker.io/cmssw/el9:x86_64
+# image: registry.cern.ch/docker.io/cmssw/el9:x86_64
+image: gitlab-registry.cern.ch/cms-analysis/general/combine-container:CMSSW_14_1_0_pre4-combine_v10.2.0-harvester_v3.0.0
+
+
 
 variables:
   LCG_ENV: "/cvmfs/sft.cern.ch/lcg/views/LCG_104/x86_64-el9-gcc11-opt/"
@@ -8,27 +11,36 @@ variables:
   CMSSW_RELEASE: CMSSW_14_1_0_pre4
   SCRAM_ARCH: el9_amd64_gcc12
 
-before_script:
-  - df -H ./
-  - cat /proc/meminfo
-  - source ${LCG_ENV}/setup.sh
-  - pwd
-  - ls -alh
+# before_script:
+#   - df -H ./
+#   - cat /proc/meminfo
+#   - source ${LCG_ENV}/setup.sh
+#   - pwd
+#   - ls -alh
   # - if test -f ./setup_env.sh; then source setup_env.sh; fi;
+before_script:
+  - source /cvmfs/cms.cern.ch/cmsset_default.sh
+  - cd /home/cmsusr/CMSSW_14_1_0_pre4/
+  - cmsenv || true
 
 
 stages:
   - setup
   - validation
 
-
-cmssw_compile:
-  stage: setup 
-  tags: [cvmfs]
+test_cards:
+  tags:
+    - cvmfs
   script:
-    - set +u && source ${CMS_PATH}/cmsset_default.sh; set -u
-    - export SCRAM_ARCH=${SCRAM_ARCH}
-    - cmsrel ${CMSSW_RELEASE}
+    - text2workspace.py --help
+
+# cmssw_compile:
+#   stage: setup 
+#   tags: [cvmfs]
+#   script:
+#     - set +u && source ${CMS_PATH}/cmsset_default.sh; set -u
+#     - export SCRAM_ARCH=${SCRAM_ARCH}
+#     - cmsrel ${CMSSW_RELEASE}
     # - cd ${CMSSW_RELEASE}/src
     # - cmsenv
     # - git clone https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit.git HiggsAnalysis/CombinedLimit
