@@ -40,3 +40,9 @@ cmssw_compile:
     - cd $CMSSW_BASE/src
     - git clone https://github.com/cms-analysis/CombineHarvester.git CombineHarvester
     - scram b -j4
+
+test:
+  stage: validation
+  image: gitlab-registry.cern.ch/cms-cloud/cmssw-docker/al9-cms
+  script: 
+    - echo "test"
