@@ -1,4 +1,5 @@
-image: gitlab-registry.cern.ch/cms-cloud/cmssw-docker/al9-cms
+# image: gitlab-registry.cern.ch/cms-cloud/cmssw-docker/al9-cms
+image: registry.cern.ch/docker.io/cmssw/el9:x86_64
 
 variables:
   LCG_ENV: "/cvmfs/sft.cern.ch/lcg/views/LCG_104/x86_64-el9-gcc11-opt/"
