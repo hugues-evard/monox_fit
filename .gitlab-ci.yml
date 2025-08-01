@@ -29,8 +29,8 @@ stages:
   - validation
 
 test_cards:
-  tags:
-    - cvmfs
+  stage: setup
+  tags: [cvmfs]
   script:
     - text2workspace.py --help
 
