@@ -13,7 +13,7 @@ before_script:
   - source ${LCG_ENV}/setup.sh
   - pwd
   - ls -alh
-  - if test -f ./setup_env.sh; then source setup_env.sh; fi;
+  # - if test -f ./setup_env.sh; then source setup_env.sh; fi;
 
 
 stages:
@@ -30,19 +30,19 @@ cmssw_compile:
     - set +u && source ${CMS_PATH}/cmsset_default.sh; set -u
     - export SCRAM_ARCH=${SCRAM_ARCH}
     - cmsrel ${CMSSW_RELEASE}
-    - cd ${CMSSW_RELEASE}/src
-    - cmsenv
-    - git clone https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit.git HiggsAnalysis/CombinedLimit
-    - cd $CMSSW_BASE/src/HiggsAnalysis/CombinedLimit
-    - git fetch origin
-    - git checkout v10.0.1
-    - scramv1 b clean; scramv1 b 
-    - cd $CMSSW_BASE/src
-    - git clone https://github.com/cms-analysis/CombineHarvester.git CombineHarvester
-    - scram b -j4
+    # - cd ${CMSSW_RELEASE}/src
+    # - cmsenv
+    # - git clone https://github.com/cms-analysis/HiggsAnalysis-CombinedLimit.git HiggsAnalysis/CombinedLimit
+    # - cd $CMSSW_BASE/src/HiggsAnalysis/CombinedLimit
+    # - git fetch origin
+    # - git checkout v10.0.1
+    # - scramv1 b clean; scramv1 b 
+    # - cd $CMSSW_BASE/src
+    # - git clone https://github.com/cms-analysis/CombineHarvester.git CombineHarvester
+    # - scram b -j4
 
-test:
-  stage: validation
-  image: gitlab-registry.cern.ch/cms-cloud/cmssw-docker/al9-cms
-  script: 
-    - echo "test"
+# test:
+#   stage: validation
+#   image: gitlab-registry.cern.ch/cms-cloud/cmssw-docker/al9-cms
+#   script: 
+#     - echo "test"
